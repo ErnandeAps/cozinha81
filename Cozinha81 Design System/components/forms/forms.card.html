@@ -1,0 +1,171 @@
+<!-- @dsCard group="Components" viewport="700x420" name="Forms" subtitle="Input, Select, Switch, Checkbox" -->
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../../styles.css">
+<style>
+  /* Self-contained: literal token values so the card renders styled even
+     when the external stylesheet is blocked in a sandboxed card iframe. */
+  body { margin: 0; padding: 26px; background: #FAFAFA; font-family: 'Hanken Grotesk', system-ui, sans-serif; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 22px 28px; align-items: start; }
+  .stack { display: flex; flex-direction: column; gap: 14px; }
+  .lbl { font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 10px; letter-spacing: .14em; text-transform: uppercase; color: #9B968C; margin-bottom: 4px; }
+
+  .c81-field { display: flex; flex-direction: column; gap: 6px; }
+  .c81-label { font-family: 'Hanken Grotesk', system-ui, sans-serif; font-size: 14px; font-weight: 600; color: #1A1A1A; }
+  .c81-hint { font-size: 12px; color: #9B968C; }
+  .c81-input {
+    height: 42px; padding: 0 14px; width: 100%;
+    font-family: 'Hanken Grotesk', system-ui, sans-serif; font-size: 16px; color: #1A1A1A;
+    background: #FFFFFF; border: 2px solid #E0E0E0; border-radius: 6px;
+    transition: all 200ms cubic-bezier(0.22,0.61,0.36,1);
+  }
+  .c81-input::placeholder { color: #9B968C; }
+  .c81-input:hover { border-color: #C2BEB5; }
+  .c81-input:focus { outline: none; border-color: #C4520A; box-shadow: 0 0 0 3px rgba(196,82,10,.30); }
+  .c81-input--invalid { border-color: #C8362B; }
+  textarea.c81-input { height: auto; padding: 12px 14px; resize: vertical; min-height: 96px; line-height: 1.5; }
+
+  .c81-select {
+    height: 42px; padding: 0 38px 0 14px; width: 100%;
+    font-family: 'Hanken Grotesk', system-ui, sans-serif; font-size: 16px; color: #1A1A1A;
+    background: #FFFFFF; border: 2px solid #E0E0E0; border-radius: 6px; cursor: pointer; appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M2 4l4 4 4-4' stroke='%23565350' stroke-width='1.8' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 14px center;
+    transition: all 200ms cubic-bezier(0.22,0.61,0.36,1);
+  }
+  .c81-select:focus { outline: none; border-color: #C4520A; box-shadow: 0 0 0 3px rgba(196,82,10,.30); }
+
+  .c81-switch { display: inline-flex; align-items: center; gap: 10px; cursor: pointer; user-select: none; background: none; border: 0; padding: 0; font: inherit; }
+  .c81-switch__track { width: 42px; height: 24px; border-radius: 999px; background: #C2BEB5; position: relative; transition: background 200ms cubic-bezier(0.22,0.61,0.36,1); flex: none; }
+  .c81-switch__thumb { position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(26,26,26,.08), 0 1px 2px rgba(26,26,26,.06); transition: transform 200ms cubic-bezier(0.22,0.61,0.36,1); }
+  .c81-switch[data-on="true"] .c81-switch__track { background: #C4520A; }
+  .c81-switch[data-on="true"] .c81-switch__thumb { transform: translateX(18px); }
+  .c81-switch__label { font-size: 14px; color: #1A1A1A; font-weight: 500; }
+
+  .c81-check { display: inline-flex; align-items: center; gap: 10px; cursor: pointer; user-select: none; font-size: 14px; color: #1A1A1A; background: none; border: 0; padding: 0; }
+  .c81-check__box { width: 20px; height: 20px; border-radius: 4px; flex: none; border: 2px solid #C2BEB5; background: #FFFFFF; display: inline-flex; align-items: center; justify-content: center; transition: all 200ms cubic-bezier(0.22,0.61,0.36,1); }
+  .c81-check__box svg { opacity: 0; transition: opacity 120ms; }
+  .c81-check[data-on="true"] .c81-check__box { background: #C4520A; border-color: #C4520A; }
+  .c81-check[data-on="true"] .c81-check__box svg { opacity: 1; }
+</style>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState } = React;
+
+/* Inlined DS form components (same source as the bundle) so the card
+   renders without depending on a relative bundle script load. */
+function Input({ label, hint, invalid = false, id, className = '', as = 'input', ...rest }) {
+  const fieldId = id || (label ? 'f-' + label.replace(/\s+/g, '-').toLowerCase() : undefined);
+  const cls = ['c81-input', invalid ? 'c81-input--invalid' : '', className].filter(Boolean).join(' ');
+  const Tag = as === 'textarea' ? 'textarea' : 'input';
+  const control = <Tag id={fieldId} className={cls} aria-invalid={invalid || undefined} {...rest} />;
+  if (!label && !hint) return control;
+  return (
+    <div className="c81-field">
+      {label && <label className="c81-label" htmlFor={fieldId}>{label}</label>}
+      {control}
+      {hint && <span className="c81-hint">{hint}</span>}
+    </div>
+  );
+}
+
+function Select({ label, hint, id, className = '', children, ...rest }) {
+  const fieldId = id || (label ? 'f-' + label.replace(/\s+/g, '-').toLowerCase() : undefined);
+  const control = (
+    <select id={fieldId} className={['c81-select', className].filter(Boolean).join(' ')} {...rest}>
+      {children}
+    </select>
+  );
+  if (!label && !hint) return control;
+  return (
+    <div className="c81-field">
+      {label && <label className="c81-label" htmlFor={fieldId}>{label}</label>}
+      {control}
+      {hint && <span className="c81-hint">{hint}</span>}
+    </div>
+  );
+}
+
+function Switch({ checked, defaultChecked = false, onChange, label, disabled = false, className = '', ...rest }) {
+  const isControlled = checked !== undefined;
+  const [internal, setInternal] = useState(defaultChecked);
+  const on = isControlled ? checked : internal;
+  const toggle = () => {
+    if (disabled) return;
+    if (!isControlled) setInternal(!on);
+    onChange && onChange(!on);
+  };
+  return (
+    <button type="button" role="switch" aria-checked={on} data-on={on} disabled={disabled} onClick={toggle}
+      className={['c81-switch', className].filter(Boolean).join(' ')}
+      style={disabled ? { opacity: 0.5, cursor: 'not-allowed' } : undefined} {...rest}>
+      <span className="c81-switch__track"><span className="c81-switch__thumb" /></span>
+      {label && <span className="c81-switch__label">{label}</span>}
+    </button>
+  );
+}
+
+function Checkbox({ checked, defaultChecked = false, onChange, label, disabled = false, className = '', ...rest }) {
+  const isControlled = checked !== undefined;
+  const [internal, setInternal] = useState(defaultChecked);
+  const on = isControlled ? checked : internal;
+  const toggle = () => {
+    if (disabled) return;
+    if (!isControlled) setInternal(!on);
+    onChange && onChange(!on);
+  };
+  return (
+    <button type="button" role="checkbox" aria-checked={on} data-on={on} disabled={disabled} onClick={toggle}
+      className={['c81-check', className].filter(Boolean).join(' ')}
+      style={disabled ? { opacity: 0.5, cursor: 'not-allowed' } : undefined} {...rest}>
+      <span className="c81-check__box">
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+          <path d="M2.5 6.2l2.3 2.3L9.5 3.5" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </span>
+      {label && <span>{label}</span>}
+    </button>
+  );
+}
+
+function Demo() {
+  return (
+    <div className="grid">
+      <div className="stack">
+        <Input label="Nome da operação" placeholder="Ex.: Burger do Zé" />
+        <Input label="CNPJ" invalid defaultValue="00.000" hint="CNPJ inválido" />
+      </div>
+      <div className="stack">
+        <Select label="Unidade" defaultValue="vl">
+          <option value="vl">Vila Leopoldina</option>
+          <option value="pi">Pinheiros</option>
+          <option value="sa">Santo Amaro</option>
+        </Select>
+        <Input label="Observações" as="textarea" placeholder="Equipamentos necessários…" />
+      </div>
+      <div className="stack">
+        <div className="lbl">Switch</div>
+        <Switch label="Reservas automáticas" defaultChecked />
+        <Switch label="Cozinha aberta agora" />
+        <Switch label="Desativado" disabled />
+      </div>
+      <div className="stack">
+        <div className="lbl">Checkbox</div>
+        <Checkbox label="Coifa industrial" defaultChecked />
+        <Checkbox label="Câmara fria" />
+        <Checkbox label="Forno combinado" defaultChecked />
+      </div>
+    </div>
+  );
+}
+ReactDOM.createRoot(document.getElementById('root')).render(<Demo/>);
+</script>
+</body>
+</html>

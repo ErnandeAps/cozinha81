@@ -1,0 +1,63 @@
+<div class="kds-container">
+  <!-- Top bar / Banner -->
+  <div class="top-bar">
+    <div class="offline-banner" *ngIf="!isOnline">
+      <span>Modo Offline ({{ pendingCount }} pendentes)</span>
+    </div>
+    
+    <button class="sound-toggle" (click)="toggleMute()">
+    {{ isMuted ? '🔇 Desmutar' : '🔊 Silenciar' }}
+  </button>
+  
+  <button class="manual-order-btn" (click)="lancarPedidoManual()">
+    + Pedido Manual
+  </button>
+  </div>
+
+  <div class="rotation-warning">
+    Por favor, gire o dispositivo para o modo paisagem.
+  </div>
+  
+  <div class="kanban-board">
+    <div class="kanban-column">
+      <h2>Aceitar ({{ getOrdersByStatus('aceitar').length }})</h2>
+      <div class="column-content" id="col-aceitar">
+        <app-order-card 
+          *ngFor="let order of getOrdersByStatus('aceitar')" 
+          [order]="order" 
+          (action)="advanceOrder($event)">
+        </app-order-card>
+      </div>
+    </div>
+    <div class="kanban-column">
+      <h2>Em preparo ({{ getOrdersByStatus('preparo').length }})</h2>
+      <div class="column-content" id="col-preparo">
+        <app-order-card 
+          *ngFor="let order of getOrdersByStatus('preparo')" 
+          [order]="order" 
+          (action)="advanceOrder($event)">
+        </app-order-card>
+      </div>
+    </div>
+    <div class="kanban-column">
+      <h2>Pronto ({{ getOrdersByStatus('pronto').length }})</h2>
+      <div class="column-content" id="col-pronto">
+        <app-order-card 
+          *ngFor="let order of getOrdersByStatus('pronto')" 
+          [order]="order" 
+          (action)="advanceOrder($event)">
+        </app-order-card>
+      </div>
+    </div>
+    <div class="kanban-column">
+      <h2>Despachado ({{ getOrdersByStatus('despachado').length }})</h2>
+      <div class="column-content" id="col-despachado">
+        <app-order-card 
+          *ngFor="let order of getOrdersByStatus('despachado')" 
+          [order]="order" 
+          (action)="advanceOrder($event)">
+        </app-order-card>
+      </div>
+    </div>
+  </div>
+</div>

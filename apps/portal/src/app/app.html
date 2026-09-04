@@ -1,0 +1,85 @@
+<div style="display: flex; min-height: 100vh; background: var(--bg-base);">
+  <!-- Sidebar ink -->
+  <aside style="width: 260px; background: var(--ink); color: var(--text-inverse); display: flex; flex-direction: column; padding: var(--space-6); border-right: var(--hairline);">
+    <div style="display: flex; align-items: center; gap: var(--space-3); margin-bottom: var(--space-10);">
+      <!-- Cooktop Motif with exactly one active burner -->
+      <div class="c81-burner">
+        <i style="border-color: var(--flame-500); background: var(--flame-500);"></i>
+        <i></i>
+        <i></i>
+        <i></i>
+      </div>
+      <span class="c81-eyebrow" style="color: var(--text-inverse);">COZINHA81</span>
+    </div>
+
+    <nav style="display: flex; flex-direction: column; gap: var(--space-5); flex: 1;">
+      <div style="display: flex; flex-direction: column; gap: var(--space-2);">
+        <span class="c81-eyebrow" style="color: var(--steel-500); letter-spacing: 0.14em; font-size: 10px;">OPERACIONAL</span>
+        <c81-button variant="ink" size="sm" style="justify-content: flex-start; width: 100%;" routerLink="/inicio" routerLinkActive="c81-btn--active">
+          // INÍCIO
+        </c81-button>
+        <c81-button variant="ink" size="sm" style="justify-content: flex-start; width: 100%;" routerLink="/dashboard-operacional" routerLinkActive="c81-btn--active">
+          // DASHBOARD OPERACIONAL
+        </c81-button>
+        <c81-button variant="ink" size="sm" style="justify-content: flex-start; width: 100%;" routerLink="/estoque" routerLinkActive="c81-btn--active">
+          // ESTOQUE
+        </c81-button>
+        <c81-button variant="ink" size="sm" style="justify-content: flex-start; width: 100%;" routerLink="/fichas" routerLinkActive="c81-btn--active">
+          // FICHAS
+        </c81-button>
+        <c81-button variant="ink" size="sm" style="justify-content: flex-start; width: 100%;" routerLink="/producao" routerLinkActive="c81-btn--active">
+          // PRODUÇÃO
+        </c81-button>
+        <c81-button variant="ink" size="sm" style="justify-content: flex-start; width: 100%;" routerLink="/pedidos" routerLinkActive="c81-btn--active">
+          // PEDIDOS
+        </c81-button>
+        <c81-button variant="ink" size="sm" style="justify-content: flex-start; width: 100%;" routerLink="/entregadores" routerLinkActive="c81-btn--active">
+          // ENTREGADORES
+        </c81-button>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: var(--space-2);">
+        <span class="c81-eyebrow" style="color: var(--steel-500); letter-spacing: 0.14em; font-size: 10px;">GERENCIAL</span>
+        <c81-button variant="ink" size="sm" style="justify-content: flex-start; width: 100%;" routerLink="/dashboard-gerencial" routerLinkActive="c81-btn--active">
+          // DASHBOARD GERENCIAL
+        </c81-button>
+        <c81-button variant="ink" size="sm" style="justify-content: flex-start; width: 100%;" routerLink="/custeio" routerLinkActive="c81-btn--active">
+          // CUSTEIO
+        </c81-button>
+        <c81-button variant="ink" size="sm" style="justify-content: flex-start; width: 100%;" routerLink="/usuarios" routerLinkActive="c81-btn--active">
+          // USUÁRIOS
+        </c81-button>
+        @if (isDonoAdmin()) {
+          <c81-button variant="ink" size="sm" style="justify-content: flex-start; width: 100%;" routerLink="/cmv" routerLinkActive="c81-btn--active" data-test="nav-cmv">
+            // CMV
+          </c81-button>
+          <c81-button variant="ink" size="sm" style="justify-content: flex-start; width: 100%;" routerLink="/integracoes" routerLinkActive="c81-btn--active" data-test="nav-integracoes">
+            // INTEGRAÇÕES
+          </c81-button>
+        }
+      </div>
+    </nav>
+
+    <div style="display: flex; flex-direction: column; gap: var(--space-3); padding-top: var(--space-4); border-top: 1px solid var(--steel-700);">
+      <c81-status-pill status="ready" label="ONLINE"></c81-status-pill>
+      @if (user(); as u) {
+        <span class="c81-eyebrow" style="color: var(--text-inverse);" data-test="papel">{{ u.papel === 'dono_admin' ? 'DONO/ADMIN' : 'OPERADOR' }}</span>
+
+        @if (restauranteAtivo(); as restaurante) {
+          <div style="display: flex; flex-direction: column; gap: 2px; color: var(--text-inverse);">
+            <span style="font-size: 0.7rem; letter-spacing: 0.08em; text-transform: uppercase; opacity: 0.75;">Restaurante</span>
+            <strong style="font-size: 0.92rem;">{{ restaurante.nomeRestaurante }}</strong>
+            <span style="font-size: 0.72rem; opacity: 0.8;">{{ restaurante.nomeCozinha }}</span>
+          </div>
+        }
+
+        <c81-button variant="ink" size="sm" (click)="sair()" data-test="sair">Sair</c81-button>
+      }
+    </div>
+  </aside>
+
+  <!-- Main Area -->
+  <main style="flex: 1; padding: var(--space-10); display: flex; flex-direction: column; gap: var(--space-6);">
+    <router-outlet></router-outlet>
+  </main>
+</div>

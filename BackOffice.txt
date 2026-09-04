@@ -1,0 +1,245 @@
+Crie o Backoffice
+1. Dashboard da Hub
+
+Visão consolidada apenas para a administração:
+
+Número de cozinhas ativas
+Cozinhas ocupadas x disponíveis
+Chamados abertos
+Chamados críticos
+Manutenções em andamento
+Receitas da Hub
+Contas a receber
+Inadimplência
+Próximos vencimentos
+Alertas da estrutura
+2. Gestão das cozinhas / restaurantes
+
+Cadastro de cada operação:
+
+Restaurante
+Marca
+Responsável
+CNPJ
+Contatos
+Cozinha ocupada
+Número da unidade
+Data de início
+Status do contrato
+Data de vencimento/renovação
+Situação financeira
+
+Exemplo:
+
+COZINHA 01
+Restaurante: Burger House
+Status: ATIVO 🟢
+Contrato: Vigente
+Financeiro: Regular
+Chamados: 2 abertos
+3. Gestão dos contratos
+
+A Hub precisa controlar:
+
+Data de início
+Data de término
+Valor mensal
+Reajuste
+Índice de reajuste
+Garantias
+Serviços incluídos
+Serviços adicionais
+Documentos assinados
+Histórico de alterações
+
+Alertas automáticos:
+
+Contrato próximo do vencimento
+Reajuste próximo
+Documento pendente
+4. Cobrança e financeiro da Hub
+
+A Hub controla o que cobra de cada restaurante:
+
+Cobranças fixas
+Aluguel da cozinha
+Taxa condominial
+Serviços administrativos
+Cobranças variáveis
+Energia
+Água
+Gás
+Câmara fria
+Uso de equipamentos compartilhados
+Serviços extras
+Manutenções cobradas
+
+Cada restaurante teria um extrato:
+
+Burger House — Agosto
+
+Aluguel               R$ 5.000
+Energia               R$ 1.240
+Água                  R$   380
+Gás                   R$   750
+Câmara fria           R$   250
+
+TOTAL                 R$ 7.620
+STATUS: A PAGAR
+5. Medição de consumo
+
+
+Modulo de Controle de:
+
+Medidor de energia
+Medidor de água
+Consumo de gás
+Rateio de áreas compartilhadas
+
+Para cada restaurante:
+
+Energia
+
+Leitura anterior: 12.450 kWh
+Leitura atual:    14.120 kWh
+
+Consumo:           1.670 kWh
+Valor:             R$ 1.240
+
+O sistema pode registrar as leituras e gerar automaticamente a cobrança.
+
+6. Câmara fria compartilhada
+
+A Hub pode controlar a infraestrutura, sem controlar o estoque do restaurante.
+
+Cada restaurante poderia:
+
+Solicitar espaço
+Reservar posição
+Registrar entrada e saída
+Consultar sua ocupação
+Informar necessidade de armazenamento
+
+A administração controla:
+
+Capacidade total
+Espaço ocupado
+Espaço disponível
+Restaurante responsável
+Temperatura
+Manutenção
+Ocorrências
+
+Importante: o sistema pode identificar quem está utilizando o espaço, mas o conteúdo e a gestão operacional continuam sendo responsabilidade do restaurante.
+
+7. Chamados e manutenção
+
+Os restaurantes abrem solicitações para a administração da Hub.
+
+Exemplos:
+
+Problema elétrico
+Vazamento
+Equipamento compartilhado
+Problema no exaustor
+Câmara fria
+Gás
+Limpeza de área comum
+Segurança
+Internet
+Estrutura
+
+Fluxo:
+
+RESTAURANTE ABRE CHAMADO
+          ↓
+HUB RECEBE
+          ↓
+CLASSIFICA PRIORIDADE
+          ↓
+RESPONSÁVEL ATENDE
+          ↓
+RESTAURANTE CONFIRMA
+          ↓
+CHAMADO ENCERRADO
+8. Manutenção preventiva da infraestrutura
+
+A Hub controla:
+
+Coifas
+Exaustão
+Instalação elétrica
+Instalação hidráulica
+Gás
+Câmara fria
+Equipamentos compartilhados
+Gerador
+Internet
+
+Com calendário de manutenção:
+
+EQUIPAMENTO        PRÓXIMA MANUTENÇÃO
+
+Câmara fria        12/09/2026
+Sistema de gás     18/09/2026
+Coifa principal    25/09/2026
+Exaustão           02/10/2026
+9. Reserva de recursos compartilhados
+
+Essa pode ser uma funcionalidade muito importante.
+
+Restaurantes poderiam reservar:
+
+Câmara fria
+Área de recebimento
+Equipamentos compartilhados
+Espaço de carga e descarga
+Áreas comuns
+
+O sistema evita conflito de horários.
+
+10. Documentos e conformidade
+
+Para cada restaurante:
+
+Contrato
+CNPJ
+Alvarás
+Documentação sanitária
+Seguro
+Certificados
+Documentos obrigatórios
+
+O sistema avisa:
+
+🔴 Documento vencido
+🟡 Vence em breve
+🟢 Regular
+11. Comunicação entre Hub e restaurantes
+
+Uma central de comunicação para:
+
+Avisos
+Manutenções programadas
+Interrupção de serviços
+Regras da Hub
+Atualizações
+Comunicados urgentes
+
+Exemplo:
+
+⚠️ A manutenção do sistema de exaustão ocorrerá amanhã, das 08h às 10h.
+
+Os restaurantes poderiam confirmar que leram.
+
+12. Controle de acesso
+
+A Hub controla o acesso à estrutura:
+
+Usuários autorizados por restaurante
+Funcionários
+Prestadores
+Visitantes
+Horários autorizados
+
+O restaurante pode cadastrar seus funcionários, mas a Hub mantém o controle geral.

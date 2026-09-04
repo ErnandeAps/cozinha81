@@ -1,0 +1,77 @@
+docker compose up -d db
+PGHOST=localhost
+PGPORT=5432
+PGUSER=admin
+PGPASSWORD=admin
+PGDATABASE=cozinha81
+npx nx reset
+npx nx run backend:migrate
+
+derrubar a porta
+netstat -ano | findstr :3000
+taskkill /PID 12345 /F
+
+Desabilita o Deamon:
+$env:NX_DAEMON='false'; npx nx backend 
+*********************************************************************
+
+Admin
+e-mail: dono@cozinhateste.com
+senha: DonoForte!23
+
+conta Staf
+ops@cozinha81 / SenhaForte!23
+
+************************************************************************
+Executar o server:
+cd "E:\Projetos\cozinha81\cozinha81-core-main"
+$env:NX_DAEMON='false'
+$env:PGHOST = "localhost"
+$env:PGPORT = "5432"
+$env:PGUSER = "cozinha_app"
+$env:PGPASSWORD = "app_pwd"
+$env:PGDATABASE = "cozinha81"
+.\node_modules\.bin\nx.cmd serve backend
+
+
+npx nx reset
+npx nx serve backend
+
+
+ nx run backend:build
+**********************************************************************
+
+$env:NX_DAEMON='false'
+.\node_modules\.bin\nx.cmd serve backoffice
+
+
+
+Executar o portal:
+cd "E:\Projetos\cozinha81\cozinha81-core-main"
+npx nx serve portal
+
+************************************************************************
+
+Crie as credenciais 3 restaurantes: Pyts Burguer, Espoleto, Fatias pizzas
+
+Modelo de credencial:
+Administrativo: adm@nomedorestaurante - senha: Adm123
+Permissões todas
+
+Operacional: op@nomedorestaurante - senha: Op123
+Permissões operacionais
+ 
+Foram criadas as credenciais para os 3 restaurantes no fluxo do portal:
+
+Pyts Burguer
+
+Administrativo: adm@pytsburguer.com / Adm123
+Operacional: op@pytsburguer.com / Op123
+Espoleto
+
+Administrativo: adm@espoleto.com / Adm123
+Operacional: op@espoleto.com / Op123
+Fatias pizzas
+
+Administrativo: adm@fatiaspizzas.com / Adm123
+Operacional: op@fatiaspizzas.com / Op123

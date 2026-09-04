@@ -1,0 +1,101 @@
+{
+  "name": "portal",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "projectType": "application",
+  "prefix": "app",
+  "sourceRoot": "apps/portal/src",
+  "tags": ["type:app", "scope:portal"],
+  "targets": {
+    "build": {
+      "executor": "@angular/build:application",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/apps/portal",
+        "browser": "apps/portal/src/main.ts",
+        "polyfills": [],
+        "tsConfig": "apps/portal/tsconfig.app.json",
+        "assets": [
+          {
+            "glob": "**/*",
+            "input": "apps/portal/public"
+          }
+        ],
+        "styles": [
+          "Cozinha81 Design System/styles.css",
+          "apps/portal/src/styles.css"
+        ]
+      },
+      "configurations": {
+        "production": {
+          "budgets": [
+            {
+              "type": "initial",
+              "maximumWarning": "500kb",
+              "maximumError": "1mb"
+            },
+            {
+              "type": "anyComponentStyle",
+              "maximumWarning": "15kb",
+              "maximumError": "50kb"
+            }
+          ],
+          "outputHashing": "all"
+        },
+        "development": {
+          "optimization": false,
+          "extractLicenses": false,
+          "sourceMap": true
+        }
+      },
+      "defaultConfiguration": "production"
+    },
+    "serve": {
+      "continuous": true,
+      "executor": "@angular/build:dev-server",
+      "options": {
+        "host": "0.0.0.0",
+        "allowedHosts": [
+          "localhost",
+          "127.0.0.1",
+          ".ngrok-free.app",
+          ".ngrok.app"
+        ]
+      },
+      "configurations": {
+        "production": {
+          "buildTarget": "portal:build:production"
+        },
+        "development": {
+          "buildTarget": "portal:build:development"
+        }
+      },
+      "defaultConfiguration": "development"
+    },
+    "extract-i18n": {
+      "executor": "@angular/build:extract-i18n",
+      "options": {
+        "buildTarget": "portal:build"
+      }
+    },
+    "lint": {
+      "executor": "@nx/eslint:lint"
+    },
+    "test": {
+      "executor": "@nx/jest:jest",
+      "outputs": ["{workspaceRoot}/coverage/{projectRoot}"],
+      "options": {
+        "jestConfig": "apps/portal/jest.config.ts",
+        "tsConfig": "apps/portal/tsconfig.spec.json"
+      }
+    },
+    "serve-static": {
+      "continuous": true,
+      "executor": "@nx/web:file-server",
+      "options": {
+        "buildTarget": "portal:build",
+        "staticFilePath": "dist/apps/portal/browser",
+        "spa": true
+      }
+    }
+  }
+}

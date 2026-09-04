@@ -1,0 +1,65 @@
+<div class="page-container">
+  <h1>Integrações de Delivery</h1>
+  <p>Conecte as contas da sua loja nos aplicativos de delivery para receber pedidos automaticamente.</p>
+
+  <div class="alert alert-error" *ngIf="errorMsg">{{ errorMsg }}</div>
+  <div class="alert alert-success" *ngIf="successMsg">{{ successMsg }}</div>
+
+  <div class="cards-container">
+    <!-- iFood Card -->
+    <div class="integration-card">
+      <div class="card-header">
+        <h3>iFood</h3>
+        <span class="badge" [class.badge-active]="getIntegration('ifood')">
+          {{ getIntegration('ifood') ? 'Conectado' : 'Não conectado' }}
+        </span>
+      </div>
+
+      <div class="card-body" *ngIf="!getIntegration('ifood')">
+        <div class="form-group">
+          <label>Store ID (ID da Loja)</label>
+          <input type="text" [(ngModel)]="ifoodForm.storeId" placeholder="ex: 123456-ifood" class="form-control">
+        </div>
+        <div class="form-group">
+          <label>Credenciais (Token/Secret)</label>
+          <input type="password" [(ngModel)]="ifoodForm.credentialsRaw" placeholder="Cole aqui seu token de integração" class="form-control">
+        </div>
+        <button class="btn btn-primary" (click)="connect('ifood')">Conectar iFood</button>
+      </div>
+
+      <div class="card-body connected-state" *ngIf="getIntegration('ifood') as int">
+        <p>Loja conectada: <strong>{{ int.storeId }}</strong></p>
+        <p>Status: <strong>{{ int.status }}</strong></p>
+        <button class="btn btn-danger" (click)="disconnect('ifood')">Desconectar</button>
+      </div>
+    </div>
+
+    <!-- 99Food Card -->
+    <div class="integration-card">
+      <div class="card-header">
+        <h3>99Food</h3>
+        <span class="badge" [class.badge-active]="getIntegration('99food')">
+          {{ getIntegration('99food') ? 'Conectado' : 'Não conectado' }}
+        </span>
+      </div>
+
+      <div class="card-body" *ngIf="!getIntegration('99food')">
+        <div class="form-group">
+          <label>Store ID</label>
+          <input type="text" [(ngModel)]="noveNoveForm.storeId" placeholder="ex: 99-store-xyz" class="form-control">
+        </div>
+        <div class="form-group">
+          <label>Credenciais (App Secret)</label>
+          <input type="password" [(ngModel)]="noveNoveForm.credentialsRaw" placeholder="Cole aqui seu secret" class="form-control">
+        </div>
+        <button class="btn btn-primary" (click)="connect('99food')">Conectar 99Food</button>
+      </div>
+
+      <div class="card-body connected-state" *ngIf="getIntegration('99food') as int">
+        <p>Loja conectada: <strong>{{ int.storeId }}</strong></p>
+        <p>Status: <strong>{{ int.status }}</strong></p>
+        <button class="btn btn-danger" (click)="disconnect('99food')">Desconectar</button>
+      </div>
+    </div>
+  </div>
+</div>

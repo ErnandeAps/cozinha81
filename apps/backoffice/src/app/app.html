@@ -1,0 +1,55 @@
+@if (auth.isAuthenticated()) {
+  <div style="display: flex; min-height: 100vh; background: var(--bg-base);">
+    <!-- Sidebar -->
+    <aside style="width: 260px; background: var(--surface-card); border-right: var(--hairline); display: flex; flex-direction: column; padding: var(--space-6);">
+      <div style="display: flex; align-items: center; gap: var(--space-3); margin-bottom: var(--space-10);">
+        <!-- Cooktop Motif with exactly one active burner -->
+        <div class="c81-burner">
+          <i></i>
+          <i></i>
+          <i style="border-color: var(--flame-500); background: var(--flame-500);"></i>
+          <i></i>
+        </div>
+        <span class="c81-eyebrow">COZINHA81 BACKOFFICE</span>
+      </div>
+
+      <nav style="display: flex; flex-direction: column; gap: var(--space-3); flex: 1;">
+        @for (grupo of grupos; track grupo.id) {
+          <div>
+            <button
+              type="button"
+              (click)="alternarGrupo(grupo.id)"
+              style="width: 100%; border: none; background: transparent; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.12em; font-size: 0.68rem; padding: 0 0 var(--space-2) 0; display: flex; align-items: center; justify-content: space-between; cursor: pointer; text-align: left;"
+            >
+              <span>{{ grupo.label }}</span>
+              <span>{{ grupo.aberto ? '▾' : '▸' }}</span>
+            </button>
+
+            @if (grupo.aberto) {
+              <div style="display: flex; flex-direction: column; gap: var(--space-2); padding-left: var(--space-3);">
+                @for (item of grupo.itens; track item.route) {
+                  <c81-button variant="ghost" size="sm" style="justify-content: flex-start; width: 100%;" [routerLink]="item.route">
+                    {{ item.label }}
+                  </c81-button>
+                }
+              </div>
+            }
+          </div>
+        }
+      </nav>
+
+      <footer style="margin-top: auto;">
+        <c81-button variant="danger" size="sm" style="width: 100%;" (click)="sair()">
+          SAIR (LOGOUT)
+        </c81-button>
+      </footer>
+    </aside>
+
+    <!-- Main Area -->
+    <main style="flex: 1; overflow-y: auto;">
+      <router-outlet></router-outlet>
+    </main>
+  </div>
+} @else {
+  <router-outlet></router-outlet>
+}
