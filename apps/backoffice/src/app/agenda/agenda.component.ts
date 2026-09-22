@@ -32,7 +32,7 @@ interface Reserva {
   imports: [CommonModule, FormsModule, CardComponent, ButtonComponent],
   template: `
     <header class="c81-page-header" style="padding: var(--space-6);">
-      <span class="c81-eyebrow">// AGENDA E RESERVAS</span>
+      <span class="c81-eyebrow">AGENDA E RESERVAS</span>
       <h1 class="c81-page-title" style="margin: 0; font-size: 2rem;">Reservas</h1>
     </header>
 
@@ -63,18 +63,21 @@ interface Reserva {
                   <p style="color: var(--text-secondary); font-size: 0.9rem; margin: 0;">Disponível (sem reservas).</p>
                 } @else {
                   <div style="display: flex; flex-direction: column; gap: var(--space-2);">
+                    <div style="display: grid; grid-template-columns: 1.5fr 1fr 0.7fr 2fr auto; gap: var(--space-3); padding: 0 var(--space-3) var(--space-1); font-size: 0.8rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.04em;">
+                      <span>Inquilino</span>
+                      <span>Modalidade</span>
+                      <span>Qtd H.</span>
+                      <span>Permanência</span>
+                      <span style="text-align: right;">Ações</span>
+                    </div>
+
                     @for (res of obterReservasDaCozinha(coz.id); track res.id) {
-                      <div style="display: flex; align-items: center; justify-content: space-between; padding: var(--space-2) var(--space-3); background: rgba(255,255,255,0.04); border-radius: 4px; font-size: 0.9rem;">
-                        <div>
-                          <strong>{{ obterTenantNome(res.tenant_id) }}</strong>
-                          <span style="margin-left: var(--space-3); color: var(--text-secondary);">
-                            ({{ res.modalidade | uppercase }})
-                          </span>
-                        </div>
-                        <div style="display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap; justify-content: flex-end;">
-                          <span style="font-size: 0.85rem;">
-                            {{ formatarIntervalo(res.inicio, res.fim) }}
-                          </span>
+                      <div style="display: grid; grid-template-columns: 1.5fr 1fr 0.7fr 2fr auto; gap: var(--space-3); align-items: center; padding: var(--space-2) var(--space-3); background: rgba(255,255,255,0.04); border-radius: 4px; font-size: 0.9rem;">
+                        <strong>{{ obterTenantNome(res.tenant_id) }}</strong>
+                        <span style="color: var(--text-secondary);">{{ res.modalidade | titlecase }}</span>
+                        <span style="font-weight: 600;">{{ obterDuracaoHoras(res.inicio, res.fim) }}</span>
+                        <span style="font-size: 0.85rem;">{{ formatarIntervalo(res.inicio, res.fim) }}</span>
+                        <div style="display: flex; align-items: center; justify-content: flex-end; gap: var(--space-2);">
                           <c81-button size="sm" variant="secondary" (click)="abrirEdicao(res)">Editar</c81-button>
                           <c81-button size="sm" variant="danger" (click)="removerReserva(res.id)">Excluir</c81-button>
                         </div>
@@ -134,10 +137,14 @@ interface Reserva {
             </div>
 
             <!-- Date selection -->
-            <div>
+            <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-4);">
               <label style="display: flex; flex-direction: column; gap: var(--space-1); font-weight: 500;">
                 Data de Início
                 <input class="c81-input" type="date" [(ngModel)]="form.data" name="data" required (change)="verificarConflitos()" data-test="f-data" />
+              </label>
+              <label style="display: flex; flex-direction: column; gap: var(--space-1); font-weight: 500;">
+                Data Final
+                <input class="c81-input" type="date" [(ngModel)]="form.dataFim" name="dataFim" required (change)="verificarConflitos()" data-test="f-data-fim" />
               </label>
             </div>
 
@@ -168,15 +175,8 @@ interface Reserva {
               </div>
             }
 
-            <!-- Conflict Indicator (UX-DR8) -->
-            @if (temConflito()) {
-              <div style="padding: var(--space-3); background: rgba(239, 68, 68, 0.15); border: 1px solid var(--status-stop); border-radius: 6px; color: var(--status-stop); font-weight: 600;" data-test="conflito-alert">
-                ⚠️ Conflito de agenda detectado! Conflito bloqueia salvar.
-              </div>
-            }
-
             <div style="margin-top: var(--space-2); display: flex; gap: var(--space-3); align-items: center;">
-              <c81-button type="submit" variant="primary" [disabled]="temConflito() || enviando()" data-test="f-salvar">
+              <c81-button type="submit" variant="primary" [disabled]="enviando()" data-test="f-salvar">
                 {{ enviando() ? 'Processando...' : (reservaEditandoId() ? 'Salvar Alterações' : 'Confirmar Reserva') }}
               </c81-button>
               @if (reservaEditandoId()) {
@@ -208,6 +208,7 @@ export class AgendaComponent implements OnInit {
     tenantId: string;
     modalidade: ModalidadeReserva;
     data: string;
+    dataFim: string;
     turno: 'manha' | 'tarde' | 'noite';
     inicioManual: string;
     fimManual: string;
@@ -216,6 +217,7 @@ export class AgendaComponent implements OnInit {
     tenantId: '',
     modalidade: 'turno',
     data: '',
+    dataFim: '',
     turno: 'manha',
     inicioManual: '06:00',
     fimManual: '10:00',
@@ -275,66 +277,73 @@ export class AgendaComponent implements OnInit {
     return `${df(inicio)} ${hf(inicio)} às ${df(fim)} ${hf(fim)}`;
   }
 
-  protected verificarConflitos(): void {
-    if (!this.form.cozinhaId || !this.form.data) {
-      this.temConflito.set(false);
-      return;
+  protected obterDuracaoHoras(inicioStr: string, fimStr: string): string {
+    const inicio = new Date(inicioStr);
+    const fim = new Date(fimStr);
+    const diferencaMs = fim.getTime() - inicio.getTime();
+
+    if (!Number.isFinite(diferencaMs) || diferencaMs <= 0) {
+      return '0H';
     }
 
-    const { inicio, fim } = this.calcularHorarios();
-    const tInicio = new Date(inicio).getTime();
-    const tFim = new Date(fim).getTime();
+    const horasPorDia = ((fim.getUTCHours() + fim.getUTCMinutes() / 60 + fim.getUTCSeconds() / 3600)
+      - (inicio.getUTCHours() + inicio.getUTCMinutes() / 60 + inicio.getUTCSeconds() / 3600));
 
-    // Filtra reservas da mesma cozinha
-    const reservasCozinha = this.obterReservasDaCozinha(this.form.cozinhaId);
-    
-    // Verifica sobreposição de intervalos no lado do cliente
-    const conflito = reservasCozinha.some((r) => {
-      const rStart = new Date(r.inicio).getTime();
-      const rEnd = new Date(r.fim).getTime();
-      // Sobrepõe se: inicio1 < fim2 E inicio2 < fim1
-      return tInicio < rEnd && rStart < tFim;
-    });
+    const dias = Math.max(
+      1,
+      Math.round(diferencaMs / (24 * 60 * 60 * 1000)) + 1
+    );
 
-    this.temConflito.set(conflito);
+    const totalHoras = horasPorDia * dias;
+    const valor = Number.isInteger(totalHoras) ? totalHoras : totalHoras.toFixed(1);
+    return `${valor}H`;
+  }
+
+  protected verificarConflitos(): void {
+    this.temConflito.set(false);
   }
 
   private calcularHorarios(): { inicio: string; fim: string } {
-    const dataBase = this.form.data;
+    const dataInicio = this.form.data || this.form.dataFim || new Date().toISOString().slice(0, 10);
+    const dataFimSelecionada = this.form.dataFim || this.form.data || dataInicio;
+    const dataFimUtilizada = this.form.modalidade === 'personalizado' || this.form.modalidade === 'dia'
+      ? dataFimSelecionada
+      : dataFimSelecionada;
+
     let inicio = '';
     let fim = '';
 
     if (this.form.modalidade === 'turno') {
       if (this.form.turno === 'manha') {
-        inicio = `${dataBase}T08:00:00Z`;
-        fim = `${dataBase}T12:00:00Z`;
+        inicio = `${dataInicio}T08:00:00Z`;
+        fim = `${dataFimUtilizada}T12:00:00Z`;
       } else if (this.form.turno === 'tarde') {
-        inicio = `${dataBase}T13:00:00Z`;
-        fim = `${dataBase}T17:00:00Z`;
+        inicio = `${dataInicio}T13:00:00Z`;
+        fim = `${dataFimUtilizada}T17:00:00Z`;
       } else {
-        inicio = `${dataBase}T18:00:00Z`;
-        fim = `${dataBase}T22:00:00Z`;
+        inicio = `${dataInicio}T18:00:00Z`;
+        fim = `${dataFimUtilizada}T22:00:00Z`;
       }
     } else if (this.form.modalidade === 'cafe') {
-      inicio = `${dataBase}T06:00:00Z`;
-      fim = `${dataBase}T10:00:00Z`;
+      inicio = `${dataInicio}T06:00:00Z`;
+      fim = `${dataFimUtilizada}T10:00:00Z`;
     } else if (this.form.modalidade === 'almoco') {
-      inicio = `${dataBase}T10:00:00Z`;
-      fim = `${dataBase}T15:00:00Z`;
+      inicio = `${dataInicio}T10:00:00Z`;
+      fim = `${dataFimUtilizada}T15:00:00Z`;
     } else if (this.form.modalidade === 'jantar') {
-      inicio = `${dataBase}T16:00:00Z`;
-      fim = `${dataBase}T23:00:00Z`;
+      inicio = `${dataInicio}T16:00:00Z`;
+      fim = `${dataFimUtilizada}T23:00:00Z`;
     } else if (this.form.modalidade === 'personalizado') {
       const inicioManual = this.form.inicioManual || '06:00';
       const fimManual = this.form.fimManual || '10:00';
-      inicio = `${dataBase}T${inicioManual}:00Z`;
-      fim = `${dataBase}T${fimManual}:00Z`;
+      inicio = `${dataInicio}T${inicioManual}:00Z`;
+      fim = `${dataFimUtilizada}T${fimManual}:00Z`;
     } else if (this.form.modalidade === 'dia') {
-      inicio = `${dataBase}T00:00:00Z`;
-      fim = `${dataBase}T23:59:59Z`;
+      inicio = `${dataInicio}T00:00:00Z`;
+      fim = `${dataFimUtilizada}T23:59:59Z`;
     } else {
-      inicio = `${dataBase}T00:00:00Z`;
-      fim = `${dataBase}T23:59:59Z`;
+      inicio = `${dataInicio}T00:00:00Z`;
+      fim = `${dataFimUtilizada}T23:59:59Z`;
     }
 
     return { inicio, fim };
@@ -349,6 +358,7 @@ export class AgendaComponent implements OnInit {
       tenantId: reserva.tenant_id,
       modalidade: reserva.modalidade,
       data: inicio.toISOString().split('T')[0],
+      dataFim: fim.toISOString().split('T')[0],
       turno: this.obterTurnoDeData(reserva.inicio, reserva.fim),
       inicioManual: `${String(inicio.getUTCHours()).padStart(2, '0')}:${String(inicio.getUTCMinutes()).padStart(2, '0')}`,
       fimManual: `${String(fim.getUTCHours()).padStart(2, '0')}:${String(fim.getUTCMinutes()).padStart(2, '0')}`,
@@ -363,6 +373,7 @@ export class AgendaComponent implements OnInit {
       tenantId: '',
       modalidade: 'turno',
       data: '',
+      dataFim: '',
       turno: 'manha',
       inicioManual: '06:00',
       fimManual: '10:00',
@@ -374,7 +385,15 @@ export class AgendaComponent implements OnInit {
     event.preventDefault();
     this.erro.set(null);
 
-    if (this.temConflito()) return;
+    if (!this.form.data || !this.form.dataFim) {
+      this.erro.set('Informe a data de início e a data final.');
+      return;
+    }
+
+    if (new Date(this.form.data) > new Date(this.form.dataFim)) {
+      this.erro.set('A data final deve ser maior ou igual à data de início.');
+      return;
+    }
 
     this.enviando.set(true);
     const { inicio, fim } = this.calcularHorarios();

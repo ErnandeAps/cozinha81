@@ -17,9 +17,7 @@ CREATE TABLE IF NOT EXISTS reserva (
   cozinha_id uuid        NOT NULL REFERENCES cozinha (id) ON DELETE CASCADE,
   periodo    tstzrange   NOT NULL,
   modalidade text        NOT NULL CHECK (modalidade IN ('turno', 'cafe', 'almoco', 'jantar', 'personalizado', 'dia')),
-  criado_em  timestamptz NOT NULL DEFAULT now(),
-  -- Constraint de exclusão para impedir sobreposição/overbooking na mesma cozinha
-  CONSTRAINT no_overbooking EXCLUDE USING gist (cozinha_id WITH =, periodo WITH &&)
+  criado_em  timestamptz NOT NULL DEFAULT now()
 );
 
 ALTER TABLE reserva ENABLE ROW LEVEL SECURITY;
@@ -33,10 +31,11 @@ CREATE POLICY reserva_tenant_isolation ON reserva
   )
   WITH CHECK (tenant_id = NULLIF(current_setting('app.tenant_id', true), '')::uuid);
 
--- 3. Documento (documentos de compliance por Cozinha, geridos por staff)
+-- 3. Documento (documentos de compliance por inquilino, com referência opcional à cozinha por compatibilidade)
 CREATE TABLE IF NOT EXISTS documento (
   id         uuid        PRIMARY KEY DEFAULT uuidv7(),
-  cozinha_id uuid        NOT NULL REFERENCES cozinha (id) ON DELETE CASCADE,
+  tenant_id  uuid        NOT NULL REFERENCES inquilino (id) ON DELETE CASCADE,
+  cozinha_id uuid        NULL REFERENCES cozinha (id) ON DELETE SET NULL,
   tipo       text        NOT NULL,
   arquivo    text        NOT NULL,
   validade   timestamptz NOT NULL,

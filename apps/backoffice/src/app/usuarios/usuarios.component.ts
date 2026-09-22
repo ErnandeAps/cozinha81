@@ -134,7 +134,7 @@ const BACKOFFICE_PERMISSOES = [
   imports: [FormsModule, CardComponent, ButtonComponent],
   template: `
     <header style="padding: var(--space-6);">
-      <span class="c81-eyebrow">// USUÁRIOS</span>
+      <span class="c81-eyebrow">USUÁRIOS</span>
       <h1 style="margin: 0; font-size: 2rem;">Cadastro e permissões</h1>
     </header>
 

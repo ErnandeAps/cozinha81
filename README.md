@@ -43,6 +43,19 @@ cozinha81-core/                 # monorepo Nx
 
 > O **contrato do projeto** (PRD, UX, arquitetura, SPEC, épicos e stories) vive **fora** deste repositório, no workspace de planejamento `../_bmad-output/` — ver "Documentação do projeto" abaixo.
 
+## Estado atual do backoffice (implementado)
+
+O repositório já contém uma série de entregas operacionais do backoffice, além da base de arquitetura original:
+
+- **Dashboard operacional refinado**: o card “Cozinhas liberadas” agora conta com base no status real da cozinha (`liberada` / `interditada`), com deduplicação por id para refletir a fonte de verdade da listagem de cozinhas e evitar divergências visuais.
+- **Ajuste visual do dashboard**: a área do dashboard foi ampliada para melhor uso da tela, removendo os prefixos de cabeçalho `//` e deixando o layout mais enxuto e legível.
+- **Fluxo de caixa e faturamento**: o backoffice já expõe a tela de fluxo de caixa e o fluxo de pagamentos/lançamentos de entrada e saída, com ajuste de formatação de valores em centavos.
+- **Relatório de impressão**: a ação de impressão foi convertida em relatório dos lançamentos, em vez de imprimir a tela inteira.
+- **Comunicação interna**: o módulo de comunicação foi implementado com UI + API + persistência em banco, incluindo salvamento de mensagens geradas, seleção de destinatários e listagem.
+- **Menu administrativo ajustado**: itens de documentos e acessos foram removidos; a navegação foi mantida com comunicação e outros módulos relevantes.
+- **Status da cozinha como regra de negócio**: a regra de liberada/interditada é tratada pelo status cadastrado, com fallback para `equipada` apenas quando o dado de status ainda não existe.
+- **Migração de banco aplicada**: os dados de comunicação e as estruturas relacionadas foram migradas e validadas no schema do backend.
+
 ## Entrega faseada
 
 A entrega é liderada pelo valor percebido pelo inquilino:

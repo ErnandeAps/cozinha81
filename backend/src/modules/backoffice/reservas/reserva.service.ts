@@ -30,26 +30,16 @@ export class ReservaService {
       throw new NotFoundException(`Cozinha não encontrada: ${cozinhaId}`);
     }
 
-    try {
-      // Toda inserção de reserva é tenant-scoped. Precisamos rodar sob o contexto do tenant dono.
-      return await this.db.withTenant(dto.tenantId, async (c) => {
-        const { rows } = await c.query<ReservaRow>(
-          `INSERT INTO reserva (tenant_id, cozinha_id, periodo, modalidade)
-           VALUES ($1, $2, tstzrange($3, $4, '[)'), $5)
-           RETURNING id, tenant_id, cozinha_id, lower(periodo) as inicio, upper(periodo) as fim, modalidade, criado_em`,
-          [dto.tenantId, cozinhaId, dto.inicio, dto.fim, dto.modalidade]
-        );
-        return rows[0];
-      });
-    } catch (err: any) {
-      // 23P01 é o código Postgres para violação de restrição de exclusão (exclusion violation)
-      if (err.code === '23P01') {
-        throw new ConflictException(
-          `Conflito de agenda: a Cozinha já está ocupada ou reservada neste período.`
-        );
-      }
-      throw err;
-    }
+    // Toda inserção de reserva é tenant-scoped. Precisamos rodar sob o contexto do tenant dono.
+    return await this.db.withTenant(dto.tenantId, async (c) => {
+      const { rows } = await c.query<ReservaRow>(
+        `INSERT INTO reserva (tenant_id, cozinha_id, periodo, modalidade)
+         VALUES ($1, $2, tstzrange($3, $4, '[)'), $5)
+         RETURNING id, tenant_id, cozinha_id, lower(periodo) as inicio, upper(periodo) as fim, modalidade, criado_em`,
+        [dto.tenantId, cozinhaId, dto.inicio, dto.fim, dto.modalidade]
+      );
+      return rows[0];
+    });
   }
 
   async listarTodos(scope: 'platform' | 'tenant', tenantId?: string): Promise<ReservaRow[]> {
@@ -108,35 +98,26 @@ export class ReservaService {
       throw new NotFoundException(`Cozinha não encontrada: ${dto.cozinhaId}`);
     }
 
-    try {
-      return await this.db.withTenant(dto.tenantId, async (c) => {
-        const { rows: existenteRows } = await c.query<ReservaRow>(
-          `SELECT id, tenant_id, cozinha_id, lower(periodo) as inicio, upper(periodo) as fim, modalidade, criado_em
-           FROM reserva WHERE id = $1`,
-          [id]
-        );
-        if (existenteRows.length === 0) throw new NotFoundException(`Reserva não encontrada: ${id}`);
+    return await this.db.withTenant(dto.tenantId, async (c) => {
+      const { rows: existenteRows } = await c.query<ReservaRow>(
+        `SELECT id, tenant_id, cozinha_id, lower(periodo) as inicio, upper(periodo) as fim, modalidade, criado_em
+         FROM reserva WHERE id = $1`,
+        [id]
+      );
+      if (existenteRows.length === 0) throw new NotFoundException(`Reserva não encontrada: ${id}`);
 
-        const { rows } = await c.query<ReservaRow>(
-          `UPDATE reserva
-           SET tenant_id = $2,
-               cozinha_id = $3,
-               periodo = tstzrange($4, $5, '[)'),
-               modalidade = $6
-           WHERE id = $1
-           RETURNING id, tenant_id, cozinha_id, lower(periodo) as inicio, upper(periodo) as fim, modalidade, criado_em`,
-          [id, dto.tenantId, dto.cozinhaId, dto.inicio, dto.fim, dto.modalidade]
-        );
-        return rows[0];
-      });
-    } catch (err: any) {
-      if (err.code === '23P01') {
-        throw new ConflictException(
-          `Conflito de agenda: a Cozinha já está ocupada ou reservada neste período.`
-        );
-      }
-      throw err;
-    }
+      const { rows } = await c.query<ReservaRow>(
+        `UPDATE reserva
+         SET tenant_id = $2,
+             cozinha_id = $3,
+             periodo = tstzrange($4, $5, '[)'),
+             modalidade = $6
+         WHERE id = $1
+         RETURNING id, tenant_id, cozinha_id, lower(periodo) as inicio, upper(periodo) as fim, modalidade, criado_em`,
+        [id, dto.tenantId, dto.cozinhaId, dto.inicio, dto.fim, dto.modalidade]
+      );
+      return rows[0];
+    });
   }
 
   async remover(id: string, scope: 'platform' | 'tenant', tenantId?: string): Promise<void> {

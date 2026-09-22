@@ -2,13 +2,13 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { DatabaseService } from '../../../core/database/database.service';
 import type { SalvarCentroCustoDto } from './centro-custo.controller';
 
-function toCentavos(valor: number | string | null | undefined): number {
+function toReal(valor: number | string | null | undefined): number {
   const numero = Number(valor ?? 0);
   if (!Number.isFinite(numero)) {
     return 0;
   }
 
-  return Math.round(numero * 100);
+  return Math.round(numero);
 }
 
 @Injectable()
@@ -36,29 +36,43 @@ export class CentroCustoService {
 
   async salvarPorCozinha(cozinhaId: string, dto: SalvarCentroCustoDto): Promise<Record<string, unknown>> {
     return this.db.withPlatform(async (client) => {
+      const areaM2 = Number(dto.areaM2 ?? 0);
+      const equipamentos = toReal(dto.equipamentos);
+      const servicos = toReal(dto.servicos);
+      const condominio = toReal(dto.condominio);
+      const seguranca = toReal(dto.seguranca);
+      const manutencao = toReal(dto.manutencao);
+      const outros = toReal(dto.outros);
+      const totalMensal = areaM2 + equipamentos + servicos + condominio + seguranca + manutencao + outros;
+      const roiDesejado = Number(dto.roiDesejado ?? 30) / 100;
+      const aluguelManual = Number(dto.aluguelMensal ?? 0);
+      const aluguelMensal = aluguelManual > 0
+        ? aluguelManual
+        : Math.max(0, ((totalMensal * (1 + roiDesejado)) / 12));
+
       const equipamentosDetalhesNormalizados = (dto.equipamentosDetalhes ?? []).map((item) => ({
         ...item,
-        valor: toCentavos(item.valor),
+        valor: toReal(item.valor),
       }));
 
       const payload = {
         cozinha_id: cozinhaId,
         nome_cozinha: dto.nomeCozinha ?? '',
-        investimento_inicial: toCentavos(dto.investimentoInicial),
+        investimento_inicial: toReal(dto.investimentoInicial),
         prazo_contrato_meses: Number(dto.prazoContratoMeses ?? 0),
-        custos_fixos_mensais: toCentavos(dto.custosFixosMensais),
+        custos_fixos_mensais: toReal(dto.custosFixosMensais),
         roi_desejado: Number(dto.roiDesejado ?? 0),
-        reserva_manutencao: toCentavos(dto.reservaManutencao),
-        aluguel_mensal: toCentavos(dto.aluguelMensal),
+        reserva_manutencao: toReal(dto.reservaManutencao),
+        aluguel_mensal: Math.round(aluguelMensal * 100),
         margem: Number(dto.margem ?? 0),
-        taxa_administracao: toCentavos(dto.taxaAdministracao),
-        area_m2: Number(dto.areaM2 ?? 0),
-        equipamentos: toCentavos(dto.equipamentos),
-        servicos: toCentavos(dto.servicos),
-        condominio: toCentavos(dto.condominio),
-        seguranca: toCentavos(dto.seguranca),
-        manutencao: toCentavos(dto.manutencao),
-        outros: toCentavos(dto.outros),
+        taxa_administracao: toReal(dto.taxaAdministracao),
+        area_m2: areaM2,
+        equipamentos,
+        servicos,
+        condominio,
+        seguranca,
+        manutencao,
+        outros,
         equipamentos_detalhes: JSON.stringify(equipamentosDetalhesNormalizados),
       };
 

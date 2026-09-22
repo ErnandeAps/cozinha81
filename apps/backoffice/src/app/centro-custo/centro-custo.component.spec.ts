@@ -37,8 +37,46 @@ describe('CentroCustoComponent', () => {
 
     expect(component.totalMensal()).toBe(6300);
     expect(component.custoPorM2()).toBe(63);
-    expect(component.aluguelSugeridoMensal()).toBeCloseTo(4438.33, 2);
-    expect(component.aluguelSugeridoPorM2()).toBeCloseTo(44.38, 2);
+    expect(component.aluguelSugeridoMensal()).toBeCloseTo(682.5, 2);
+    expect(component.aluguelSugeridoPorM2()).toBeCloseTo(6.83, 2);
+  });
+
+  it('should format and parse BRL input without moving decimal separator', () => {
+    const fixture = TestBed.createComponent(CentroCustoComponent);
+    const component = fixture.componentInstance as any;
+
+    component.alterarAluguelMensal('2.241.790,00');
+
+    expect(component.aluguelMensal()).toBe(2241790);
+    expect(component.formatarValorInput(2241790)).toBe('2.241.790,00');
+  });
+
+  it('should convert API-cent values back to reais when loading persisted centro de custo', () => {
+    const fixture = TestBed.createComponent(CentroCustoComponent);
+    const component = fixture.componentInstance as any;
+
+    component.aplicarPersistencia({
+      aluguelMensal: 135010,
+      investimentoInicial: 250000,
+      custosFixosMensais: 210000,
+      reservaManutencao: 35000,
+      taxaAdministracao: 9000,
+      form: {
+        areaM2: 120,
+        equipamentos: 200000,
+        servicos: 150000,
+        condominio: 120000,
+        seguranca: 40000,
+        manutencao: 80000,
+        outros: 30000,
+        equipamentosDetalhes: [{ id: 'eq-1', nome: 'Forno', valor: 130000 }],
+      },
+    }, null, true);
+
+    expect(component.aluguelMensal()).toBe(1350.1);
+    expect(component.investimentoInicial()).toBe(2500);
+    expect(component.form().equipamentos).toBe(2000);
+    expect(component.form().equipamentosDetalhes?.[0]?.valor).toBe(1300);
   });
 
   it('should sum all equipment rows with values', () => {
@@ -173,6 +211,31 @@ describe('CentroCustoComponent', () => {
     expect(component.roiDesejado()).toBe(20);
     expect(component.aluguelMensal()).toBe(4200);
     expect(component.form().areaM2).toBe(120);
+  });
+
+  it('should deduplicate kitchen names when the list includes repeated entries', () => {
+    localStorage.clear();
+
+    const fixture = TestBed.createComponent(CentroCustoComponent);
+    const component = fixture.componentInstance as any;
+    const httpMock = TestBed.inject(HttpTestingController);
+
+    component.cozinhas.set([
+      { id: 'cozinha-1', nome: 'Cozinha 1', areaM2: 120, equipamentos: 1500, servicos: 1200, condominio: 600, seguranca: 250, manutencao: 400, outros: 200 },
+      { id: 'cozinha-1', nome: 'Cozinha 1', areaM2: 120, equipamentos: 1500, servicos: 1200, condominio: 600, seguranca: 250, manutencao: 400, outros: 200 },
+      { id: 'cozinha-2', nome: 'Cozinha 2', areaM2: 80, equipamentos: 900, servicos: 800, condominio: 500, seguranca: 200, manutencao: 300, outros: 100 },
+    ]);
+
+    component.carregarCozinhas();
+    const req = httpMock.expectOne('http://localhost:3000/api/backoffice/cozinhas');
+    req.flush([
+      { id: 'cozinha-1', nome: 'Cozinha 1' },
+      { id: 'cozinha-2', nome: 'Cozinha 2' },
+      { id: 'cozinha-1', nome: 'Cozinha 1' },
+    ]);
+
+    expect(component.cozinhas().filter((item: any) => item.nome === 'Cozinha 1')).toHaveLength(1);
+    expect(component.cozinhas().map((item: any) => item.nome)).toEqual(['Cozinha 1', 'Cozinha 2']);
   });
 
   it('should load equipment details from the backend response using snake_case field names', () => {

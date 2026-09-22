@@ -12,4 +12,5 @@ ALTER TABLE inquilino
   ADD COLUMN IF NOT EXISTS bairro text,
   ADD COLUMN IF NOT EXISTS cidade text,
   ADD COLUMN IF NOT EXISTS estado text,
-  ADD COLUMN IF NOT EXISTS observacoes text;
+  ADD COLUMN IF NOT EXISTS observacoes text,
+  ADD COLUMN IF NOT EXISTS valor_contrato bigint NOT NULL DEFAULT 0;

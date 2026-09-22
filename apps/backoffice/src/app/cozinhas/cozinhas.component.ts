@@ -11,6 +11,9 @@ interface Cozinha {
   id: string;
   nome: string;
   equipada: boolean;
+  status?: 'liberada' | 'interditada';
+  areaM2?: number | null;
+  area_m2?: number | null;
   criado_em: string;
   inquilino_id?: string | null;
   inquilino_nome?: string | null;
@@ -38,7 +41,7 @@ interface InquilinoOption {
   template: `
     <header class="c81-page-header" style="padding: var(--space-6); display: flex; justify-content: space-between; align-items: center;">
       <div>
-        <span class="c81-eyebrow">// UNIDADES</span>
+        <span class="c81-eyebrow">UNIDADES</span>
         <h1 class="c81-page-title" style="margin: 0; font-size: 2rem;">Cozinhas</h1>
       </div>
       <c81-button variant="primary" (click)="abrirCadastro()" data-test="nova-cozinha">+ Nova cozinha</c81-button>
@@ -63,19 +66,29 @@ interface InquilinoOption {
 
             <div>
               <label style="display: flex; flex-direction: column; gap: var(--space-1); font-weight: 500;">
-                Inquilino
-                <select class="c81-input" [(ngModel)]="form.inquilinoId" name="inquilinoId" data-test="f-inquilino">
-                  <option value="">Sem inquilino</option>
-                  @for (inquilino of inquilinos(); track inquilino.id) {
-                    <option [value]="inquilino.id">{{ inquilino.nome }}</option>
-                  }
+                Tamanho em m²
+                <input class="c81-input" type="number" min="0" step="1" [(ngModel)]="form.areaM2" name="areaM2" placeholder="Ex: 120" data-test="f-area-m2" />
+              </label>
+            </div>
+
+            <div>
+              <label style="display: flex; flex-direction: column; gap: var(--space-1); font-weight: 500;">
+                Equipamentos
+                <select class="c81-input" [(ngModel)]="form.equipada" name="equipada" data-test="f-equipada">
+                  <option [ngValue]="true">Equipada</option>
+                  <option [ngValue]="false">Não equipada</option>
                 </select>
               </label>
             </div>
-            
-            <div style="display: flex; align-items: center; gap: var(--space-2);">
-              <input type="checkbox" [(ngModel)]="form.equipada" name="equipada" id="equipada" data-test="f-equipada" style="width: 18px; height: 18px;" />
-              <label for="equipada" style="font-weight: 500; cursor: pointer;">Esta cozinha é equipada?</label>
+
+            <div>
+              <label style="display: flex; flex-direction: column; gap: var(--space-1); font-weight: 500;">
+                Status
+                <select class="c81-input" [(ngModel)]="form.status" name="status" data-test="f-status-valor">
+                  <option value="liberada">Liberada</option>
+                  <option value="interditada">Interditada</option>
+                </select>
+              </label>
             </div>
 
             <div style="display: flex; gap: var(--space-3); margin-top: var(--space-2);">
@@ -97,9 +110,9 @@ interface InquilinoOption {
             <thead>
               <tr style="border-bottom: 2px solid var(--border-subtle); text-align: left;">
                 <th style="padding: var(--space-3) 0;">Nome</th>
-                <th style="padding: var(--space-3) 0;">Inquilino</th>
-                <th style="padding: var(--space-3) 0;">Tipo</th>
-                <th style="padding: var(--space-3) 0;">Modalidade de Reserva</th>
+                <th style="padding: var(--space-3) 0;">Tamanho</th>
+                <th style="padding: var(--space-3) 0;">Equipamentos</th>
+                <th style="padding: var(--space-3) 0;">Status</th>
                 <th style="padding: var(--space-3) 0; text-align: right;">Ações</th>
               </tr>
             </thead>
@@ -110,17 +123,17 @@ interface InquilinoOption {
                     {{ c.nome }}
                   </td>
                   <td style="padding: var(--space-3) 0;">
-                    {{ c.inquilino_nome || '—' }}
+                    {{ obterTamanhoCozinha(c) }}
                   </td>
                   <td style="padding: var(--space-3) 0;">
-                    @if (c.equipada) {
-                      <span style="font-size: 0.8rem; padding: 2px 8px; border-radius: 4px; background: rgba(59, 130, 246, 0.2); color: #3b82f6; font-weight: 500;">Equipada</span>
+                    {{ obterEquipamentosCozinha(c) }}
+                  </td>
+                  <td style="padding: var(--space-3) 0;">
+                    @if (obterStatusCozinha(c) === 'liberada') {
+                      <span style="font-size: 0.8rem; padding: 2px 8px; border-radius: 4px; background: rgba(34, 197, 94, 0.14); color: #4ade80; font-weight: 500;">Liberada</span>
                     } @else {
-                      <span style="font-size: 0.8rem; padding: 2px 8px; border-radius: 4px; background: rgba(107, 114, 128, 0.2); color: #9ca3af; font-weight: 500;">Não Equipada</span>
+                      <span style="font-size: 0.8rem; padding: 2px 8px; border-radius: 4px; background: rgba(107, 114, 128, 0.2); color: #9ca3af; font-weight: 500;">Interditada</span>
                     }
-                  </td>
-                  <td style="padding: var(--space-3) 0;">
-                    {{ formatarModalidadeReserva(obterModalidadeReserva(c.id)) }}
                   </td>
                   <td style="padding: var(--space-3) 0; text-align: right; display: flex; justify-content: flex-end; gap: var(--space-2);">
                     <c81-button size="sm" variant="ghost" (click)="abrirEdicao(c)" data-test="editar-cozinha">Editar</c81-button>
@@ -147,7 +160,7 @@ export class CozinhasComponent implements OnInit {
   protected readonly mostrandoForm = signal(false);
   protected readonly editandoId = signal<string | null>(null);
 
-  protected form = { nome: '', equipada: false, inquilinoId: '' };
+  protected form = { nome: '', equipada: false, areaM2: 0, status: 'liberada', inquilinoId: '' };
 
   ngOnInit(): void {
     this.carregarInquilinos();
@@ -165,7 +178,11 @@ export class CozinhasComponent implements OnInit {
     this.carregando.set(true);
     this.http.get<Cozinha[]>(`${API_BASE}/backoffice/cozinhas`).subscribe({
       next: (lista) => {
-        const listaUnica = Array.from(new Map(lista.map((cozinha) => [cozinha.id, cozinha])).values());
+        const listaUnica = Array.from(new Map(lista.map((cozinha) => [cozinha.id, {
+          ...cozinha,
+          areaM2: cozinha.areaM2 ?? cozinha.area_m2 ?? 0,
+          status: cozinha.status ?? (cozinha.equipada ? 'liberada' : 'interditada'),
+        }])).values());
         this.cozinhas.set(listaUnica);
         this.carregarModalidadesReserva(listaUnica.map((cozinha) => cozinha.id));
         this.carregando.set(false);
@@ -181,6 +198,19 @@ export class CozinhasComponent implements OnInit {
         this.carregando.set(false);
       },
     });
+  }
+
+  protected obterTamanhoCozinha(cozinha: Cozinha): string {
+    const area = Number(cozinha.areaM2 ?? cozinha.area_m2 ?? 0);
+    return area > 0 ? `${area} m²` : '—';
+  }
+
+  protected obterEquipamentosCozinha(cozinha: Cozinha): string {
+    return cozinha.equipada ? 'Equipada' : 'Não equipada';
+  }
+
+  protected obterStatusCozinha(cozinha: Cozinha): 'liberada' | 'interditada' {
+    return cozinha.status ?? (cozinha.equipada ? 'liberada' : 'interditada');
   }
 
   protected obterModalidadeReserva(cozinhaId: string): ModalidadeReserva | null {
@@ -206,13 +236,19 @@ export class CozinhasComponent implements OnInit {
 
   protected abrirCadastro(): void {
     this.editandoId.set(null);
-    this.form = { nome: '', equipada: false, inquilinoId: '' };
+    this.form = { nome: '', equipada: false, areaM2: 0, status: 'liberada', inquilinoId: '' };
     this.mostrandoForm.set(true);
   }
 
   protected abrirEdicao(cozinha: Cozinha): void {
     this.editandoId.set(cozinha.id);
-    this.form = { nome: cozinha.nome, equipada: cozinha.equipada, inquilinoId: cozinha.inquilino_id ?? '' };
+    this.form = {
+      nome: cozinha.nome,
+      equipada: cozinha.equipada,
+      areaM2: Number(cozinha.areaM2 ?? cozinha.area_m2 ?? 0),
+      status: this.obterStatusCozinha(cozinha),
+      inquilinoId: cozinha.inquilino_id ?? '',
+    };
     this.mostrandoForm.set(true);
   }
 
@@ -231,7 +267,13 @@ export class CozinhasComponent implements OnInit {
       return;
     }
 
-    const payload = { nome, equipada: this.form.equipada, inquilinoId: this.form.inquilinoId || undefined };
+    const payload = {
+      nome,
+      equipada: this.form.equipada,
+      status: this.form.status,
+      areaM2: Number(this.form.areaM2 ?? 0),
+      inquilinoId: this.form.inquilinoId || undefined,
+    };
     const id = this.editandoId();
 
     const request = id

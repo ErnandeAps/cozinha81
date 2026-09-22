@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Post, Put, UseGuards } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { CurrentUser } from '../../../core/auth/current-user.decorator';
 import type { AuthPrincipal } from '../../../core/auth/jwt-payload';
@@ -19,6 +19,11 @@ export class ProvisioningController {
   @Post()
   provisionar(@Body() body: ProvisionarInquilinoDto, @CurrentUser() staff: AuthPrincipal) {
     return this.provisioning.provisionar(body, staff.sub);
+  }
+
+  @Put(':id')
+  atualizar(@Param('id') id: string, @Body() body: Partial<ProvisionarInquilinoDto>) {
+    return this.provisioning.atualizar(id, body);
   }
 
   @Get()

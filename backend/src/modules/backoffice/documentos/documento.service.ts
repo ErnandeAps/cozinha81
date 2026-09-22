@@ -5,7 +5,8 @@ import { join } from 'node:path';
 
 export interface DocumentoRow {
   id: string;
-  cozinha_id: string;
+  tenant_id: string;
+  cozinha_id: string | null;
   tipo: string;
   arquivo: string;
   validade: Date;
@@ -20,6 +21,45 @@ export class DocumentoService {
     if (!existsSync(this.uploadDir)) {
       mkdirSync(this.uploadDir, { recursive: true });
     }
+  }
+
+  async anexarParaInquilino(
+    tenantId: string,
+    tipo: string,
+    validade: string,
+    file: { originalname: string; buffer: Buffer }
+  ): Promise<DocumentoRow> {
+    const inquilino = await this.db.withPlatform(async (c) => {
+      const { rows } = await c.query('SELECT id FROM inquilino WHERE id = $1', [tenantId]);
+      return rows[0];
+    });
+    if (!inquilino) {
+      throw new NotFoundException(`Inquilino não encontrado: ${tenantId}`);
+    }
+
+    const uniqueFilename = `${Date.now()}-${file.originalname}`;
+    const filePath = join(this.uploadDir, uniqueFilename);
+    writeFileSync(filePath, file.buffer);
+
+    return this.db.withTenant(tenantId, async (c) => {
+      const { rows } = await c.query<DocumentoRow>(
+        `INSERT INTO documento (tenant_id, tipo, arquivo, validade)
+         VALUES ($1, $2, $3, $4)
+         RETURNING *`,
+        [tenantId, tipo, uniqueFilename, validade]
+      );
+      return rows[0];
+    });
+  }
+
+  async listarPorInquilino(tenantId: string): Promise<DocumentoRow[]> {
+    return this.db.withTenant(tenantId, async (c) => {
+      const { rows } = await c.query<DocumentoRow>(
+        'SELECT * FROM documento WHERE tenant_id = $1 ORDER BY criado_em DESC',
+        [tenantId]
+      );
+      return rows;
+    });
   }
 
   async anexar(

@@ -5,6 +5,8 @@ export interface CozinhaRow {
   id: string;
   nome: string;
   equipada: boolean;
+  status?: 'liberada' | 'interditada';
+  area_m2?: number | null;
   criado_em: Date;
   inquilino_id?: string | null;
   inquilino_nome?: string | null;
@@ -14,11 +16,12 @@ export interface CozinhaRow {
 export class CozinhaService {
   constructor(private readonly db: DatabaseService) {}
 
-  async criar(dto: { nome: string; equipada?: boolean; inquilinoId?: string }): Promise<CozinhaRow> {
+  async criar(dto: { nome: string; equipada?: boolean; status?: 'liberada' | 'interditada'; areaM2?: number; inquilinoId?: string }): Promise<CozinhaRow> {
     return this.db.withPlatform(async (c) => {
+      const status = dto.status ?? (dto.equipada ? 'liberada' : 'interditada');
       const { rows } = await c.query<CozinhaRow>(
-        'INSERT INTO cozinha (nome, equipada) VALUES ($1, $2) RETURNING *',
-        [dto.nome, dto.equipada ?? false]
+        'INSERT INTO cozinha (nome, equipada, status, area_m2) VALUES ($1, $2, $3, $4) RETURNING *',
+        [dto.nome, dto.equipada ?? false, status, Number(dto.areaM2 ?? 0)]
       );
 
       const cozinha = rows[0];
@@ -49,17 +52,19 @@ export class CozinhaService {
     });
   }
 
-  async atualizar(id: string, dto: { nome?: string; equipada?: boolean; inquilinoId?: string }): Promise<CozinhaRow> {
+  async atualizar(id: string, dto: { nome?: string; equipada?: boolean; status?: 'liberada' | 'interditada'; areaM2?: number; inquilinoId?: string }): Promise<CozinhaRow> {
     return this.db.withPlatform(async (c) => {
       const { rows: currentRows } = await c.query<CozinhaRow>('SELECT * FROM cozinha WHERE id = $1', [id]);
       if (currentRows.length === 0) throw new NotFoundException(`Cozinha não encontrada: ${id}`);
 
       const updatedNome = dto.nome !== undefined ? dto.nome : currentRows[0].nome;
       const updatedEquipada = dto.equipada !== undefined ? dto.equipada : currentRows[0].equipada;
+      const updatedStatus = dto.status ?? currentRows[0].status ?? (updatedEquipada ? 'liberada' : 'interditada');
+      const updatedAreaM2 = dto.areaM2 !== undefined ? Number(dto.areaM2) : Number(currentRows[0].area_m2 ?? 0);
 
       const { rows } = await c.query<CozinhaRow>(
-        'UPDATE cozinha SET nome = $1, equipada = $2 WHERE id = $3 RETURNING *',
-        [updatedNome, updatedEquipada, id]
+        'UPDATE cozinha SET nome = $1, equipada = $2, status = $3, area_m2 = $4 WHERE id = $5 RETURNING *',
+        [updatedNome, updatedEquipada, updatedStatus, updatedAreaM2, id]
       );
 
       if (dto.inquilinoId !== undefined) {

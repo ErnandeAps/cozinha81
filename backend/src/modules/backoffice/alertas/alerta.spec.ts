@@ -31,6 +31,23 @@ describe('Alerta de Vencimento de Documento (Story 8.5)', () => {
     await h?.stop();
   });
 
+  it('ignora documentos sem cozinha_id ao sincronizar alertas', async () => {
+    const validadeProxima = new Date();
+    validadeProxima.setDate(validadeProxima.getDate() + 5);
+
+    await documentoSvc.anexarParaInquilino(
+      tenantId,
+      'Documento sem cozinha',
+      validadeProxima.toISOString(),
+      { originalname: 'sem-cozinha.pdf', buffer: Buffer.from('mock') }
+    );
+
+    await expect(service.sincronizarAlertas()).resolves.toBeUndefined();
+
+    const alertas = await service.obterAlertasAtivos();
+    expect(alertas.some((a) => a.documento_tipo === 'Documento sem cozinha')).toBe(false);
+  });
+
   it('gera alerta para documento vencendo em < 30 dias, mas não para documento válido por mais tempo (AC-1)', async () => {
     // 1. Criar um documento válido por 60 dias (não deve gerar alerta)
     const validadeFutura = new Date();

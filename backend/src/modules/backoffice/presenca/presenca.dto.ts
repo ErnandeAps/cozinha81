@@ -1,6 +1,7 @@
 export class RegistrarPresencaDto {
   cozinhaId: string;
   tenantId?: string;
+  data?: string;
   tipo: 'in' | 'out';
   checklist?: {
     limpeza: boolean;

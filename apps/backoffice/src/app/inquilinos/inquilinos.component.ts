@@ -34,6 +34,7 @@ interface Inquilino {
   cidade?: string;
   estado?: string;
   observacoes?: string;
+  valorContrato?: number;
   dono?: {
     id?: string;
     nome?: string;
@@ -65,6 +66,8 @@ interface InquilinoForm {
   cidade: string;
   estado: string;
   observacoes: string;
+  aluguelSugerido: number;
+  valorContrato: number;
   donoNome: string;
   donoEmail: string;
   modulos: Array<'gestao_cozinha' | 'pedidos_kds'>;
@@ -78,7 +81,7 @@ const MODULOS_DISPONIVEIS: Array<'gestao_cozinha' | 'pedidos_kds'> = ['gestao_co
   imports: [CommonModule, FormsModule, CardComponent, ButtonComponent],
   template: `
     <header style="padding: var(--space-6);">
-      <span class="c81-eyebrow">// INQUILINOS</span>
+      <span class="c81-eyebrow">INQUILINOS</span>
       <h1 style="margin: 0; font-size: 2rem;">Cadastro de inquilinos</h1>
     </header>
 
@@ -100,16 +103,6 @@ const MODULOS_DISPONIVEIS: Array<'gestao_cozinha' | 'pedidos_kds'> = ['gestao_co
 
         <form (submit)="salvar($event)" style="display: grid; gap: var(--space-4);">
           <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: var(--space-4);">
-            <label style="display: flex; flex-direction: column; gap: var(--space-1); font-weight: 500;">
-              Cozinha
-              <select class="c81-input" [(ngModel)]="formulario.cozinhaId" name="cozinhaId" required>
-                <option value="">Selecione uma cozinha</option>
-                @for (cozinha of cozinhas(); track cozinha.id) {
-                  <option [value]="cozinha.id">{{ cozinha.nome }}</option>
-                }
-              </select>
-            </label>
-
             <label style="display: flex; flex-direction: column; gap: var(--space-1); font-weight: 500;">
               Nome do restaurante
               <input class="c81-input" [(ngModel)]="formulario.nome" name="nome" required />
@@ -211,8 +204,8 @@ const MODULOS_DISPONIVEIS: Array<'gestao_cozinha' | 'pedidos_kds'> = ['gestao_co
           </div>
 
           <div style="display: flex; gap: var(--space-3);">
-            <c81-button type="submit" variant="primary">
-              {{ formulario.id ? 'Salvar' : 'Adicionar' }}
+            <c81-button type="submit" variant="primary" [disabled]="salvando()">
+              {{ salvando() ? (formulario.id ? 'Salvando...' : 'Cadastrando...') : (formulario.id ? 'Salvar' : 'Adicionar') }}
             </c81-button>
             <c81-button type="button" variant="ghost" (click)="limparFormulario()">
               Limpar
@@ -261,25 +254,25 @@ const MODULOS_DISPONIVEIS: Array<'gestao_cozinha' | 'pedidos_kds'> = ['gestao_co
         <div style="display: flex; justify-content: space-between; align-items: end; gap: var(--space-4); flex-wrap: wrap; margin-bottom: var(--space-4);">
           <h2 style="margin: 0;">Repositório de Documentos</h2>
           <label style="display: flex; flex-direction: column; gap: var(--space-1); font-weight: 500; min-width: min(280px, 100%);">
-            Cozinha
-            <select class="c81-input" [(ngModel)]="cozinhaDocumentosId" name="cozinhaDocumentos" (ngModelChange)="carregarDocumentosDaCozinha($event)">
-              <option value="">Selecione uma cozinha</option>
-              @for (cozinha of cozinhas(); track cozinha.id) {
-                <option [value]="cozinha.id">{{ cozinha.nome }}</option>
+            Inquilino
+            <select class="c81-input" [(ngModel)]="inquilinoDocumentosId" name="inquilinoDocumentos" (ngModelChange)="selecionarInquilinoDocumentos($event)">
+              <option value="">Selecione um inquilino</option>
+              @for (inquilino of inquilinos(); track inquilino.id) {
+                <option [value]="inquilino.id">{{ inquilino.nome }}</option>
               }
             </select>
           </label>
         </div>
 
-        @if (!cozinhaDocumentosId) {
-          <p style="margin: 0; color: var(--text-secondary);">Selecione uma cozinha para visualizar e anexar os documentos.</p>
+        @if (!inquilinoDocumentosId) {
+          <p style="margin: 0; color: var(--text-secondary);">Selecione um inquilino para visualizar e anexar os documentos.</p>
         } @else {
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-6); align-items: start;">
             <div>
               @if (documentosCarregando()) {
                 <p style="margin: 0; color: var(--text-secondary);">Carregando documentos...</p>
               } @else if (documentos().length === 0) {
-                <p style="margin: 0; color: var(--text-secondary);">Nenhum documento arquivado para esta cozinha.</p>
+                <p style="margin: 0; color: var(--text-secondary);">Nenhum documento arquivado para este inquilino.</p>
               } @else {
                 <div style="display: flex; flex-direction: column; gap: var(--space-3);">
                   @for (doc of documentos(); track doc.id) {
@@ -348,10 +341,12 @@ export class InquilinosComponent implements OnInit {
   protected readonly documentoUploadErro = signal<string | null>(null);
   protected readonly carregando = signal(false);
   protected readonly cepBuscando = signal(false);
+  protected readonly salvando = signal(false);
   protected readonly erro = signal<string | null>(null);
   protected readonly sucesso = signal<string | null>(null);
 
   protected cozinhaDocumentosId = '';
+  protected inquilinoDocumentosId = '';
   protected documentoForm = { tipo: '', validade: '' };
   private arquivoDocumentoSelecionado: File | null = null;
 
@@ -372,6 +367,8 @@ export class InquilinosComponent implements OnInit {
     cidade: '',
     estado: '',
     observacoes: '',
+    aluguelSugerido: 0,
+    valorContrato: 0,
     donoNome: '',
     donoEmail: '',
     modulos: [],
@@ -385,15 +382,19 @@ export class InquilinosComponent implements OnInit {
   protected salvar(event: Event): void {
     event.preventDefault();
 
+    if (this.salvando()) {
+      return;
+    }
+
     const form = this.formulario;
-    if (!form.cozinhaId.trim() || !form.nome.trim() || !form.razaoSocial.trim() || !form.cnpj.trim() || !form.telefone.trim() || !form.donoNome.trim() || !form.donoEmail.trim()) {
-      this.erro.set('Selecione a cozinha e preencha os dados principais do restaurante e do dono/admin.');
+    if (!form.nome.trim() || !form.razaoSocial.trim() || !form.cnpj.trim() || !form.telefone.trim() || !form.donoNome.trim() || !form.donoEmail.trim()) {
+      this.erro.set('Preencha os dados principais do restaurante e do dono/admin.');
       this.sucesso.set(null);
       return;
     }
 
     const payload = {
-      cozinhaId: form.cozinhaId.trim(),
+      cozinhaId: form.cozinhaId || undefined,
       nome: form.nome.trim(),
       razaoSocial: form.razaoSocial.trim(),
       nomeFantasia: form.nomeFantasia.trim(),
@@ -416,15 +417,22 @@ export class InquilinosComponent implements OnInit {
     };
 
     this.erro.set(null);
+    this.salvando.set(true);
     this.sucesso.set(form.id ? 'Salvando alterações...' : 'Cadastrando inquilino...');
 
-    this.http.post(`${API_BASE}/backoffice/inquilinos`, payload).subscribe({
+    const request$ = form.id
+      ? this.http.put(`${API_BASE}/backoffice/inquilinos/${form.id}`, payload)
+      : this.http.post(`${API_BASE}/backoffice/inquilinos`, payload);
+
+    request$.subscribe({
       next: () => {
+        this.salvando.set(false);
         this.limparFormulario();
         this.carregarInquilinos();
         this.sucesso.set(form.id ? 'Inquilino atualizado com sucesso.' : 'Inquilino cadastrado com sucesso.');
       },
       error: (e) => {
+        this.salvando.set(false);
         this.erro.set(e?.error?.message ?? 'Falha ao salvar o inquilino no banco.');
         this.sucesso.set(null);
       },
@@ -449,14 +457,31 @@ export class InquilinosComponent implements OnInit {
       cidade: inquilino.cidade ?? '',
       estado: inquilino.estado ?? '',
       observacoes: inquilino.observacoes ?? '',
+      aluguelSugerido: 0,
+      valorContrato: Number(inquilino.valorContrato ?? 0),
       donoNome: inquilino.dono?.nome ?? '',
       donoEmail: inquilino.dono?.email ?? '',
       modulos: (inquilino.modulos ?? []).filter((m) => m.habilitado).map((m) => m.modulo),
     };
+    this.selecionarCozinha(inquilino.cozinhaId ?? '');
     this.cozinhaDocumentosId = inquilino.cozinhaId ?? '';
     this.carregarDocumentosDaCozinha(this.cozinhaDocumentosId);
     this.erro.set(null);
     this.sucesso.set(null);
+  }
+
+  protected selecionarCozinha(cozinhaId: string): void {
+    this.formulario = {
+      ...this.formulario,
+      cozinhaId: cozinhaId ?? '',
+    };
+
+    if (!cozinhaId) {
+      this.formulario.valorContrato = Number(this.formulario.valorContrato ?? 0);
+      return;
+    }
+
+    this.atualizarValoresContratoComCozinha();
   }
 
   protected excluir(id: string): void {
@@ -504,10 +529,50 @@ export class InquilinosComponent implements OnInit {
       cidade: '',
       estado: '',
       observacoes: '',
+      aluguelSugerido: 0,
+      valorContrato: 0,
       donoNome: '',
       donoEmail: '',
       modulos: [],
     };
+  }
+
+  protected selecionarInquilinoDocumentos(inquilinoId: string): void {
+    this.inquilinoDocumentosId = inquilinoId;
+    if (!inquilinoId) {
+      this.cozinhaDocumentosId = '';
+      this.documentos.set([]);
+      this.documentosCarregando.set(false);
+      return;
+    }
+
+    const inquilino = this.inquilinos().find((item) => item.id === inquilinoId);
+    this.cozinhaDocumentosId = inquilino?.cozinhaId ?? '';
+    this.carregarDocumentosDoInquilino(inquilinoId);
+  }
+
+  private selecionarPrimeiroInquilinoComCozinha(): void {
+    const inquilinoSelecionado = this.inquilinos().find((item) => item.id === this.inquilinoDocumentosId)
+      ?? this.inquilinos()[0];
+
+    if (!inquilinoSelecionado) {
+      this.inquilinoDocumentosId = '';
+      this.cozinhaDocumentosId = '';
+      this.documentos.set([]);
+      this.documentosCarregando.set(false);
+      return;
+    }
+
+    this.inquilinoDocumentosId = inquilinoSelecionado.id;
+    this.cozinhaDocumentosId = inquilinoSelecionado.cozinhaId ?? '';
+
+    if (this.inquilinoDocumentosId) {
+      this.carregarDocumentosDoInquilino(this.inquilinoDocumentosId);
+      return;
+    }
+
+    this.documentos.set([]);
+    this.documentosCarregando.set(false);
   }
 
   protected listarModulos(modulos: InquilinoModulo[]): string {
@@ -521,21 +586,49 @@ export class InquilinosComponent implements OnInit {
       .join(', ');
   }
 
+  protected formatarValor(valor: number): string {
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(Number.isFinite(valor) ? valor : 0);
+  }
+
   private carregarCozinhas(): void {
     this.http.get<Array<{ id: string; nome: string }>>(`${API_BASE}/backoffice/cozinhas`).subscribe({
       next: (lista) => {
         this.cozinhas.set(lista);
-        if (!this.cozinhaDocumentosId && lista.length > 0) {
-          this.cozinhaDocumentosId = lista[0].id;
-          this.carregarDocumentosDaCozinha(this.cozinhaDocumentosId);
-        }
       },
       error: () => this.cozinhas.set([]),
     });
   }
 
+  protected carregarDocumentosDoInquilino(inquilinoId: string): void {
+    if (!inquilinoId) {
+      this.documentosCarregando.set(false);
+      this.documentos.set([]);
+      return;
+    }
+
+    this.documentosCarregando.set(true);
+    this.documentoUploadErro.set(null);
+
+    this.http.get<Documento[]>(`${API_BASE}/backoffice/documentos/inquilino/${inquilinoId}`).subscribe({
+      next: (lista) => {
+        this.documentos.set(lista);
+        this.documentosCarregando.set(false);
+      },
+      error: () => {
+        this.documentos.set([]);
+        this.documentosCarregando.set(false);
+      },
+    });
+  }
+
   protected carregarDocumentosDaCozinha(cozinhaId: string): void {
     if (!cozinhaId) {
+      this.documentosCarregando.set(false);
       this.documentos.set([]);
       return;
     }
@@ -565,8 +658,8 @@ export class InquilinosComponent implements OnInit {
   protected uploadDocumento(event: Event): void {
     event.preventDefault();
 
-    if (!this.cozinhaDocumentosId) {
-      this.documentoUploadErro.set('Selecione uma cozinha antes de anexar um documento.');
+    if (!this.inquilinoDocumentosId) {
+      this.documentoUploadErro.set('Selecione um inquilino antes de anexar um documento.');
       return;
     }
 
@@ -590,12 +683,12 @@ export class InquilinosComponent implements OnInit {
     formData.append('validade', new Date(validade).toISOString());
     formData.append('file', this.arquivoDocumentoSelecionado);
 
-    this.http.post(`${API_BASE}/backoffice/documentos/cozinha/${this.cozinhaDocumentosId}`, formData).subscribe({
+    this.http.post(`${API_BASE}/backoffice/documentos/inquilino/${this.inquilinoDocumentosId}`, formData).subscribe({
       next: () => {
         this.documentoForm = { tipo: '', validade: '' };
         this.arquivoDocumentoSelecionado = null;
         this.documentoEnviando.set(false);
-        this.carregarDocumentosDaCozinha(this.cozinhaDocumentosId);
+        this.carregarDocumentosDoInquilino(this.inquilinoDocumentosId);
       },
       error: (e) => {
         this.documentoEnviando.set(false);
@@ -610,7 +703,7 @@ export class InquilinosComponent implements OnInit {
     }
 
     this.http.delete(`${API_BASE}/backoffice/documentos/${docId}`).subscribe(() => {
-      this.carregarDocumentosDaCozinha(this.cozinhaDocumentosId);
+      this.carregarDocumentosDoInquilino(this.inquilinoDocumentosId);
     });
   }
 
@@ -652,6 +745,47 @@ export class InquilinosComponent implements OnInit {
     });
   }
 
+  private atualizarValoresContratoComCozinha(): void {
+    const valorContratoEmCache = Number(this.formulario.valorContrato ?? 0);
+
+    if (!this.formulario.cozinhaId) {
+      this.formulario.aluguelSugerido = 0;
+      this.formulario.valorContrato = valorContratoEmCache;
+      return;
+    }
+
+    this.http.get<Record<string, unknown>>(`${API_BASE}/backoffice/centro-custo/cozinha/${this.formulario.cozinhaId}`).subscribe({
+      next: (dados) => {
+        const valorAluguelSugerido = this.normalizarValorMoeda(
+          dados['aluguel_sugerido'] ?? dados['aluguelSugerido'] ?? dados['aluguel_mensal'] ?? dados['aluguelMensal'] ?? 0,
+        );
+        const totalHorasMes = 442; // horas disponíveis no mês
+        const valorHora = valorAluguelSugerido > 0 ? valorAluguelSugerido / totalHorasMes : 0;
+
+        this.formulario.aluguelSugerido = Number(valorAluguelSugerido || 0);
+        const valorContrato = valorHora > 0 ? valorHora * totalHorasMes : valorContratoEmCache;
+        this.formulario.valorContrato = Number(valorContrato || 0);
+      },
+      error: () => {
+        this.formulario.aluguelSugerido = 0;
+        this.formulario.valorContrato = valorContratoEmCache;
+      },
+    });
+  }
+
+  private normalizarValorMoeda(valor: unknown): number {
+    const numero = Number(valor ?? 0);
+    if (!Number.isFinite(numero)) {
+      return 0;
+    }
+
+    if (numero === 0) {
+      return 0;
+    }
+
+    return numero;
+  }
+
   private carregarInquilinos(): void {
     this.carregando.set(true);
     this.erro.set(null);
@@ -659,6 +793,11 @@ export class InquilinosComponent implements OnInit {
     this.http.get<Inquilino[]>(`${API_BASE}/backoffice/inquilinos`).subscribe({
       next: (response) => {
         this.inquilinos.set(response);
+        if (!this.inquilinoDocumentosId || !response.some((item) => item.id === this.inquilinoDocumentosId)) {
+          this.selecionarPrimeiroInquilinoComCozinha();
+        } else if (this.inquilinoDocumentosId) {
+          this.selecionarInquilinoDocumentos(this.inquilinoDocumentosId);
+        }
         this.carregando.set(false);
       },
       error: (e) => {

@@ -19,6 +19,7 @@ interface Presenca {
   id: string;
   cozinha_id: string;
   tenant_id: string | null;
+  data: string;
   tipo: 'in' | 'out';
   checklist: {
     limpeza: boolean;
@@ -34,7 +35,7 @@ interface Presenca {
   imports: [CommonModule, FormsModule, CardComponent, ButtonComponent],
   template: `
     <header class="c81-page-header" style="padding: var(--space-6);">
-      <span class="c81-eyebrow">// CONTROLE DE PRESENÇA</span>
+      <span class="c81-eyebrow">CONTROLE DE PRESENÇA</span>
       <h1 class="c81-page-title" style="margin: 0; font-size: 2rem;">Check-in / Check-out</h1>
     </header>
 
@@ -71,6 +72,13 @@ interface Presenca {
                     <option [value]="t.id">{{ t.nome }}</option>
                   }
                 </select>
+              </label>
+            </div>
+
+            <div>
+              <label style="display: flex; flex-direction: column; gap: var(--space-1); font-weight: 500;">
+                Data do registro
+                <input class="c81-input" type="date" [(ngModel)]="form.data" name="data" required data-test="f-data" />
               </label>
             </div>
 
@@ -137,7 +145,7 @@ interface Presenca {
                   </div>
 
                   <p style="margin: var(--space-1) 0; font-size: 0.85rem; color: var(--text-secondary);">
-                    {{ formatarData(p.criado_em) }}
+                    {{ formatarData(p.data || p.criado_em) }}
                   </p>
 
                   @if (p.checklist) {
@@ -172,6 +180,7 @@ export class PresencaComponent implements OnInit {
   protected form = {
     cozinhaId: '',
     tenantId: '',
+    data: '',
     tipo: 'in' as 'in' | 'out',
     checklist: {
       limpeza: true,
@@ -236,11 +245,17 @@ export class PresencaComponent implements OnInit {
       return;
     }
 
+    if (!this.form.data) {
+      this.erro.set('Por favor, informe a data do registro.');
+      return;
+    }
+
     this.enviando.set(true);
 
     const payload = {
       cozinhaId: this.form.cozinhaId,
       tenantId: this.form.tenantId || null,
+      data: this.form.data,
       tipo: this.form.tipo,
       checklist: {
         limpeza: this.form.checklist.limpeza,
@@ -252,6 +267,7 @@ export class PresencaComponent implements OnInit {
     this.http.post<Presenca>(`${API_BASE}/backoffice/presencas`, payload).subscribe({
       next: () => {
         this.enviando.set(false);
+        this.form.data = '';
         this.form.checklist = { limpeza: true, equipamento: true, observacoes: '' };
         this.selecionarCozinha();
       },

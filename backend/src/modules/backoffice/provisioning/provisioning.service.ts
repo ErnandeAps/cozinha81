@@ -58,6 +58,7 @@ export class ProvisioningService {
         cidade: string | null;
         estado: string | null;
         observacoes: string | null;
+        valor_contrato: string | null;
         cozinha_id: string | null;
         dono_id: string | null;
         dono_nome: string | null;
@@ -83,6 +84,7 @@ export class ProvisioningService {
           i.cidade,
           i.estado,
           i.observacoes,
+          i.valor_contrato,
           d.id AS dono_id,
           d.nome AS dono_nome,
           d.email AS dono_email,
@@ -137,6 +139,77 @@ export class ProvisioningService {
           : undefined,
         modulos: Array.isArray(row.modulos) ? row.modulos : JSON.parse(row.modulos ?? '[]'),
       }));
+    });
+  }
+
+  async atualizar(id: string, dto: Partial<ProvisionarInquilinoDto>): Promise<void> {
+    if (!id?.trim()) {
+      throw new BadRequestException('id do inquilino é obrigatório.');
+    }
+
+    const payload = dto ?? {};
+    const nome = (payload.nome ?? '').trim();
+    const razaoSocial = (payload.razaoSocial ?? '').trim();
+    const donoNome = (payload.dono?.nome ?? '').trim();
+    const donoEmail = (payload.dono?.email ?? '').trim();
+
+    if (!nome) {
+      throw new BadRequestException('nome do inquilino é obrigatório.');
+    }
+
+    await this.db.withTenant(id, async (client) => {
+      const { rows } = await client.query<{ id: string }>('SELECT id FROM inquilino WHERE id = $1', [id]);
+      if (rows.length === 0) {
+        throw new NotFoundException(`Inquilino não encontrado: ${id}`);
+      }
+
+      await client.query(
+        `UPDATE inquilino SET
+          cozinha_id = $2,
+          nome = $3,
+          razao_social = $4,
+          nome_fantasia = $5,
+          cnpj = $6,
+          telefone = $7,
+          email = $8,
+          segmento = $9,
+          cep = $10,
+          logradouro = $11,
+          numero = $12,
+          bairro = $13,
+          cidade = $14,
+          estado = $15,
+          observacoes = $16
+        WHERE id = $1`,
+        [
+          id,
+          payload.cozinhaId ?? null,
+          nome,
+          razaoSocial || nome,
+          payload.nomeFantasia ?? nome,
+          payload.cnpj ?? '',
+          payload.telefone ?? '',
+          payload.email ?? '',
+          payload.segmento ?? '',
+          payload.cep ?? '',
+          payload.logradouro ?? '',
+          payload.numero ?? '',
+          payload.bairro ?? '',
+          payload.cidade ?? '',
+          payload.estado ?? '',
+          payload.observacoes ?? '',
+        ],
+      );
+
+      if (donoEmail || donoNome) {
+        await client.query(
+          `UPDATE usuario
+           SET nome = $2,
+               email = $3
+           WHERE tenant_id = $1 AND papel = 'dono_admin'`,
+          [id, donoNome || null, donoEmail || null],
+        );
+      }
     });
   }
 

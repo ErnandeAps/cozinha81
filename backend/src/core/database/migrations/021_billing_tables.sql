@@ -29,10 +29,10 @@ CREATE POLICY fatura_tenant_isolation ON fatura
 CREATE TABLE IF NOT EXISTS fatura_item (
   id         uuid        PRIMARY KEY DEFAULT uuidv7(),
   fatura_id  uuid        NOT NULL REFERENCES fatura (id) ON DELETE CASCADE,
-  tipo       text        NOT NULL CHECK (tipo IN ('aluguel', 'modulo', 'consumo_material', 'hora_extra', 'multa')),
+  tipo       text        NOT NULL CHECK (tipo IN ('aluguel', 'modulo', 'consumo_material', 'hora_extra', 'multa', 'gas')),
   descricao  text        NOT NULL,
   valor      integer     NOT NULL CHECK (valor >= 0), -- Em centavos
-  origem_id  uuid,       -- Rastreabilidade (ID de reserva, modulo_flag, ou material_movimento)
+  origem_id  uuid,       -- Rastreabilidade (ID de reserva, modulo_flag, material_movimento ou leitura_gas)
   criado_em  timestamptz NOT NULL DEFAULT now()
 );
 

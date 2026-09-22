@@ -7,7 +7,7 @@ import { CardComponent } from '@cozinha81/design-system';
   imports: [CardComponent],
   template: `
     <header style="padding: var(--space-6);">
-      <span class="c81-eyebrow">// MANUTENÇÃO</span>
+      <span class="c81-eyebrow">MANUTENÇÃO</span>
       <h1 style="margin: 0; font-size: 2rem;">Manutenção preventiva da infraestrutura</h1>
     </header>
 

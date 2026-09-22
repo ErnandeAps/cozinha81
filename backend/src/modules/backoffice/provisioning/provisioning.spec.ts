@@ -171,6 +171,38 @@ describe('Provisionamento de Inquilino + realm de plataforma (Story 1.3)', () =>
       expect(inquilino?.cozinha_id).toBe(cozinha.id);
     });
 
+    it('atualiza o inquilino existente em vez de criar um novo registro', async () => {
+      const cozinha = await h.db.withPlatform((c) =>
+        c.query<{ id: string }>(`INSERT INTO cozinha (nome, equipada) VALUES ('Cozinha da Edição', true) RETURNING id`).then((r) => r.rows[0]),
+      );
+
+      const result = await provisioning.provisionar(
+        {
+          nome: 'Restaurante Zeta',
+          dono: { email: 'dono@zeta.com', nome: 'Dono Zeta' },
+          modulos: ['gestao_cozinha'],
+        },
+        staffId,
+      );
+
+      await provisioning.atualizar(result.tenantId, {
+        nome: 'Restaurante Zeta Atualizado',
+        cozinhaId: cozinha.id,
+        dono: { email: 'novo@zeta.com', nome: 'Dono Zeta Atualizado' },
+      });
+
+      const atualizado = await h.db.withPlatform((c) =>
+        c.query<{ nome: string; cozinha_id: string | null }>(`SELECT nome, cozinha_id FROM inquilino WHERE id = $1`, [result.tenantId]).then((r) => r.rows[0]),
+      );
+
+      const dono = await h.db.withPlatform((c) =>
+        c.query<{ email: string; nome: string }>(`SELECT email, nome FROM usuario WHERE tenant_id = $1 AND papel = 'dono_admin'`, [result.tenantId]).then((r) => r.rows[0]),
+      );
+
+      expect(atualizado).toMatchObject({ nome: 'Restaurante Zeta Atualizado', cozinha_id: cozinha.id });
+      expect(dono).toMatchObject({ email: 'novo@zeta.com', nome: 'Dono Zeta Atualizado' });
+    });
+
     it('remove um inquilino e os registros relacionados', async () => {
       const result = await provisioning.provisionar(
         { nome: 'Restaurante Delta', dono: { email: 'dono@delta.com', nome: 'Dono Delta' }, modulos: ['gestao_cozinha'] },

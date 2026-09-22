@@ -48,8 +48,18 @@ describe('Reservas e Contratos de Período (Story 8.2 & 8.3)', () => {
     expect(new Date(res.fim).toISOString()).toBe('2026-07-01T12:00:00.000Z');
   });
 
-  it('deve impedir reserva conflitante na mesma cozinha via banco (Story 8.2 AC-2)', async () => {
-    // Mesma cozinha, exatamente o mesmo horário, tenant diferente
+  it('deve impedir reserva conflitante na mesma cozinha independentemente do inquilino via banco (Story 8.2 AC-2)', async () => {
+    // Mesmo inquilino na mesma cozinha e mesmo intervalo continua inválido.
+    await expect(
+      service.criar(cozinhaAId, {
+        inicio: '2026-07-01T08:00:00Z',
+        fim: '2026-07-01T12:00:00Z',
+        modalidade: 'turno',
+        tenantId: tenant1Id,
+      })
+    ).rejects.toBeInstanceOf(ConflictException);
+
+    // Outro inquilino no mesmo intervalo também é inválido, porque a cozinha já está ocupada.
     await expect(
       service.criar(cozinhaAId, {
         inicio: '2026-07-01T08:00:00Z',
@@ -59,7 +69,7 @@ describe('Reservas e Contratos de Período (Story 8.2 & 8.3)', () => {
       })
     ).rejects.toBeInstanceOf(ConflictException);
 
-    // Parcialmente sobreposto: 10:00 às 14:00 (sobrepõe 10:00 às 12:00)
+    // Parcialmente sobreposto: 10:00 às 14:00 também conflita.
     await expect(
       service.criar(cozinhaAId, {
         inicio: '2026-07-01T10:00:00Z',
@@ -70,15 +80,25 @@ describe('Reservas e Contratos de Período (Story 8.2 & 8.3)', () => {
     ).rejects.toBeInstanceOf(ConflictException);
   });
 
-  it('deve permitir reservas sobrepostas em cozinhas diferentes', async () => {
-    const res = await service.criar(cozinhaBId, {
-      inicio: '2026-07-01T08:00:00Z',
-      fim: '2026-07-01T12:00:00Z',
+  it('deve permitir reservas em mesma cozinha para inquilinos diferentes quando os horários não se sobrepõem', async () => {
+    const res = await service.criar(cozinhaAId, {
+      inicio: '2026-07-02T08:00:00Z',
+      fim: '2026-07-02T12:00:00Z',
       modalidade: 'turno',
       tenantId: tenant2Id,
     });
     expect(res.id).toBeTruthy();
-    expect(res.cozinha_id).toBe(cozinhaBId);
+    expect(res.cozinha_id).toBe(cozinhaAId);
+    expect(res.tenant_id).toBe(tenant2Id);
+
+    const res2 = await service.criar(cozinhaBId, {
+      inicio: '2026-07-02T08:00:00Z',
+      fim: '2026-07-02T12:00:00Z',
+      modalidade: 'turno',
+      tenantId: tenant2Id,
+    });
+    expect(res2.id).toBeTruthy();
+    expect(res2.cozinha_id).toBe(cozinhaBId);
   });
 
   it('deve atualizar uma reserva existente com sucesso', async () => {

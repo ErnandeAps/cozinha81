@@ -22,7 +22,8 @@ export class PresencaController {
       body.cozinhaId,
       tenantId,
       body.tipo,
-      body.checklist
+      body.checklist,
+      body.data
     );
   }
 

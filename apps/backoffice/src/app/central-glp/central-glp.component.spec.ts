@@ -55,6 +55,40 @@ describe('CentralGlpComponent', () => {
     expect(component.formFechamento.inquilinoId).toBe('');
   });
 
+  it('deve ignorar a resposta antiga do dashboard quando a data filtrada chega depois', () => {
+    const component = fixture.componentInstance as any;
+
+    const inquilinosRequest = httpMock.expectOne((req) => req.url.includes('/backoffice/inquilinos'));
+    inquilinosRequest.flush([{ id: 'tenant-1', nome: 'Inquilino A' }]);
+
+    component.gasDataInicio.set('');
+    component.gasDataFim.set('');
+    component.carregarGasDashboard();
+
+    component.gasDataInicio.set('2026-06-01');
+    component.gasDataFim.set('2026-06-10');
+    component.carregarGasDashboard();
+
+    const dashboardRequests = httpMock.match((req) => req.url.includes('/backoffice/central-glp/leituras/dashboard'));
+    expect(dashboardRequests.length).toBeGreaterThanOrEqual(2);
+
+    const [respostaAntigaRequest, respostaNovaRequest] = dashboardRequests.slice(-2);
+    const respostaAntiga = [
+      { id: 'l-old', tenantId: 'tenant-1', nomeInquilino: 'Inquilino A', dataLeitura: '2026-05-20', leituraInicial: 10, leituraFinal: 20, consumoKg: 10 },
+    ];
+    const respostaNova = [
+      { id: 'l-new', tenantId: 'tenant-1', nomeInquilino: 'Inquilino A', dataLeitura: '2026-06-05', leituraInicial: 20, leituraFinal: 25, consumoKg: 5 },
+    ];
+
+    const fechamentoRequest = httpMock.expectOne((req) => req.url.includes('/backoffice/central-glp/fechamento') && req.params.get('tenantId') === 'tenant-1');
+    fechamentoRequest.flush([]);
+
+    respostaNovaRequest.flush(respostaNova);
+    respostaAntigaRequest.flush(respostaAntiga);
+
+    expect(component.gasDashboard()).toEqual(respostaNova);
+  });
+
   it('deve exibir um estado de seleção quando a tela de abastecimentos abrir sem inquilino', () => {
     const staleRequest = httpMock.expectOne((req) => req.url.includes('/backoffice/inquilinos'));
     staleRequest.flush([
@@ -364,6 +398,49 @@ describe('CentralGlpComponent', () => {
 
     expect(component.fechamentoSalvo()).toContain('2026-06');
     expect(component.fechamentoSalvo()).toContain('60,00');
+  });
+
+  it('deve imprimir as leituras vinculadas ao fechamento para conferência', () => {
+    const inquilinosRequest = httpMock.expectOne((req) => req.url.includes('/backoffice/inquilinos'));
+    inquilinosRequest.flush([{ id: 'tenant-1', nome: 'Inquilino A' }]);
+
+    httpMock.match((req) => req.url.includes('/backoffice/central-glp/leituras/dashboard')).forEach((request) => request.flush([]));
+    httpMock.match((req) => req.url.includes('/backoffice/central-glp/fechamento')).forEach((request) => request.flush([]));
+
+    const component = fixture.componentInstance as any;
+    const printWindow = {
+      document: { write: jest.fn(), close: jest.fn(), body: {} },
+      focus: jest.fn(),
+      print: jest.fn(),
+    } as any;
+    const openSpy = jest.spyOn(window, 'open').mockReturnValue(printWindow);
+
+    const fechamento = {
+      id: 'fechamento-1',
+      tenantId: 'tenant-1',
+      nomeInquilino: 'Inquilino A',
+      mes: '2026-06',
+      consumoTotalKg: 12,
+      custoPeriodo: 100,
+      valorFaturado: 120,
+      perdasKg: 0,
+      saldoFinalKg: 50,
+      criadoEm: '2026-06-15T12:00:00Z',
+    };
+
+    component.imprimirFechamento(fechamento);
+
+    const leituraRequest = httpMock.expectOne((req) => req.url.includes('/backoffice/central-glp/fechamento/fechamento-1/leituras') && req.params.get('tenantId') === 'tenant-1');
+    leituraRequest.flush([
+      { id: 'l-1', tenantId: 'tenant-1', nomeInquilino: 'Inquilino A', dataLeitura: '2026-06-10', leituraInicial: 20, leituraFinal: 25, consumoM3: 5, consumoKg: 6, observacao: 'Leitura de conferência' },
+    ]);
+
+    expect(openSpy).toHaveBeenCalled();
+    expect(printWindow.document.write).toHaveBeenCalledWith(expect.stringContaining('Leituras do fechamento'));
+    expect(printWindow.document.write).toHaveBeenCalledWith(expect.stringContaining('Leitura de conferência'));
+    expect(printWindow.print).toHaveBeenCalled();
+
+    openSpy.mockRestore();
   });
 
 });

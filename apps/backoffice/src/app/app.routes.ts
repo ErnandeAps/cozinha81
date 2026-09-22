@@ -7,6 +7,7 @@ import { AgendaComponent } from './agenda/agenda.component';
 import { PresencaComponent } from './presenca/presenca.component';
 import { MateriaisComponent } from './materiais/materiais.component';
 import { BillingComponent } from './billing/billing.component';
+import { FluxoCaixaComponent } from './fluxo-caixa/fluxo-caixa.component';
 import { ChamadosComponent } from './chamados/chamados.component';
 import { ManutencaoComponent } from './manutencao/manutencao.component';
 import { RecursosComponent } from './recursos/recursos.component';
@@ -15,6 +16,7 @@ import { ComunicacaoComponent } from './comunicacao/comunicacao.component';
 import { AcessosComponent } from './acessos/acessos.component';
 import { UsuariosComponent } from './usuarios/usuarios.component';
 import { InquilinosComponent } from './inquilinos/inquilinos.component';
+import { GestorContratosComponent } from './gestor-contratos/gestor-contratos.component';
 import { CentroCustoComponent } from './centro-custo/centro-custo.component';
 import { CentralGlpComponent } from './central-glp/central-glp.component';
 import { authGuard } from './core/auth.guard';
@@ -34,9 +36,11 @@ export const appRoutes: Route[] = [
   { path: 'central-glp/leituras', component: CentralGlpComponent, canActivate: [authGuard], data: { section: 'leituras' } },
   { path: 'central-glp/fechamento', component: CentralGlpComponent, canActivate: [authGuard], data: { section: 'fechamento' } },
   { path: 'central-glp/relatorios', component: CentralGlpComponent, canActivate: [authGuard], data: { section: 'relatorios' } },
+  { path: 'fluxo-caixa', component: FluxoCaixaComponent, canActivate: [authGuard] },
   { path: 'billing', component: BillingComponent, canActivate: [authGuard] },
   { path: 'usuarios', component: UsuariosComponent, canActivate: [authGuard] },
   { path: 'inquilinos', component: InquilinosComponent, canActivate: [authGuard] },
+  { path: 'gestor-contratos', component: GestorContratosComponent, canActivate: [authGuard] },
   { path: 'chamados', component: ChamadosComponent, canActivate: [authGuard] },
   { path: 'manutencao', component: ManutencaoComponent, canActivate: [authGuard] },
   { path: 'recursos', component: RecursosComponent, canActivate: [authGuard] },

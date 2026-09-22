@@ -11,6 +11,7 @@ export interface PresencaRow {
   id: string;
   cozinha_id: string;
   tenant_id: string | null;
+  data: Date | string;
   tipo: 'in' | 'out';
   checklist: PresencaChecklist | null;
   criado_em: Date;
@@ -24,10 +25,26 @@ export class PresencaService {
     cozinhaId: string,
     tenantId: string | null,
     tipo: 'in' | 'out',
-    checklist?: PresencaChecklist
+    checklist?: PresencaChecklist,
+    data?: string
   ): Promise<PresencaRow> {
     if (tipo !== 'in' && tipo !== 'out') {
       throw new BadRequestException('Tipo inválido. Deve ser "in" ou "out".');
+    }
+
+    if (!data) {
+      throw new BadRequestException('Informe a data do registro de presença.');
+    }
+
+    const match = /^\d{4}-\d{2}-\d{2}$/.test(data);
+    if (!match) {
+      throw new BadRequestException('Data inválida para o registro de presença.');
+    }
+
+    const [year, month, day] = data.split('-').map(Number);
+    const dataRegistro = new Date(Date.UTC(year, month - 1, day, 12));
+    if (Number.isNaN(dataRegistro.getTime())) {
+      throw new BadRequestException('Data inválida para o registro de presença.');
     }
 
     // Valida se a cozinha existe
@@ -40,11 +57,18 @@ export class PresencaService {
     }
 
     const query = `
-      INSERT INTO presenca (cozinha_id, tenant_id, tipo, checklist)
-      VALUES ($1, $2, $3, $4)
+      INSERT INTO presenca (cozinha_id, tenant_id, data, tipo, checklist, criado_em)
+      VALUES ($1, $2, $3::date, $4, $5, $6)
       RETURNING *
     `;
-    const params = [cozinhaId, tenantId, tipo, checklist ? JSON.stringify(checklist) : null];
+    const params = [
+      cozinhaId,
+      tenantId,
+      dataRegistro.toISOString().slice(0, 10),
+      tipo,
+      checklist ? JSON.stringify(checklist) : null,
+      dataRegistro.toISOString(),
+    ];
 
     if (tenantId) {
       return this.db.withTenant(tenantId, async (c) => {

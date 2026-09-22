@@ -23,6 +23,8 @@ import { BillingController } from './billing/billing.controller';
 import { BillingService } from './billing/billing.service';
 import { UsuarioController } from './usuarios/usuario.controller';
 import { UsuarioService } from './usuarios/usuario.service';
+import { ComunicacaoController } from './comunicacao/comunicacao.controller';
+import { ComunicacaoService } from './comunicacao/comunicacao.service';
 import { GasController } from './gas/gas.controller';
 import { GasLeituraService } from './gas/gas.service';
 
@@ -44,6 +46,7 @@ import { GasLeituraService } from './gas/gas.service';
     MaterialController,
     BillingController,
     UsuarioController,
+    ComunicacaoController,
     GasController,
   ],
   providers: [
@@ -59,6 +62,7 @@ import { GasLeituraService } from './gas/gas.service';
     MaterialService,
     BillingService,
     UsuarioService,
+    ComunicacaoService,
     GasLeituraService,
   ],
 })

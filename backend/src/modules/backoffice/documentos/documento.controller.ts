@@ -9,6 +9,25 @@ import { DocumentoService, type DocumentoRow } from './documento.service';
 export class DocumentoController {
   constructor(private readonly documentoService: DocumentoService) {}
 
+  @Post('inquilino/:tenantId')
+  @UseInterceptors(FileInterceptor('file'))
+  anexarParaInquilino(
+    @Param('tenantId') tenantId: string,
+    @Body('tipo') tipo: string,
+    @Body('validade') validade: string,
+    @UploadedFile() file: { originalname: string; buffer: Buffer }
+  ): Promise<DocumentoRow> {
+    if (!tipo || !validade || !file) {
+      throw new BadRequestException('tipo, validade e arquivo são obrigatórios.');
+    }
+    return this.documentoService.anexarParaInquilino(tenantId, tipo, validade, file);
+  }
+
+  @Get('inquilino/:tenantId')
+  listarPorInquilino(@Param('tenantId') tenantId: string): Promise<DocumentoRow[]> {
+    return this.documentoService.listarPorInquilino(tenantId);
+  }
+
   @Post('cozinha/:cozinhaId')
   @UseInterceptors(FileInterceptor('file'))
   anexar(

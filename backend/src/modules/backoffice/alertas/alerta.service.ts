@@ -26,18 +26,21 @@ export class AlertaService {
       // 1. Criar novos alertas para documentos expirando nos próximos 30 dias ou expirados
       await c.query(`
         INSERT INTO alerta_documento (cozinha_id, documento_id)
-        SELECT cozinha_id, id as documento_id
-        FROM documento
-        WHERE validade <= now() + interval '30 days'
+        SELECT d.cozinha_id, d.id as documento_id
+        FROM documento d
+        WHERE d.cozinha_id IS NOT NULL
+          AND d.validade <= now() + interval '30 days'
         ON CONFLICT (documento_id) DO NOTHING
       `);
 
-      // 2. Remover alertas de documentos que não estão mais vencendo em até 30 dias ou foram excluídos
+      // 2. Remover alertas de documentos que não estão mais vencendo em até 30 dias, foram excluídos
+      //    ou perderam a referência de cozinha (comportamento compatível com o modelo atual de documentos).
       await c.query(`
         DELETE FROM alerta_documento
         WHERE documento_id NOT IN (
-          SELECT id FROM documento
-          WHERE validade <= now() + interval '30 days'
+          SELECT d.id FROM documento d
+          WHERE d.cozinha_id IS NOT NULL
+            AND d.validade <= now() + interval '30 days'
         )
       `);
     });

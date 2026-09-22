@@ -7,7 +7,7 @@ import { CardComponent } from '@cozinha81/design-system';
   imports: [CardComponent],
   template: `
     <header style="padding: var(--space-6);">
-      <span class="c81-eyebrow">// RECURSOS</span>
+      <span class="c81-eyebrow">RECURSOS</span>
       <h1 style="margin: 0; font-size: 2rem;">Reserva de recursos compartilhados</h1>
     </header>
 

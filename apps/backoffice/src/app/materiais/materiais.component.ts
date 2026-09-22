@@ -33,7 +33,7 @@ interface Movimento {
   template: `
     <header class="c81-page-header" style="padding: var(--space-6); display: flex; justify-content: space-between; align-items: center;">
       <div>
-        <span class="c81-eyebrow">// GESTÃO DE ESTOQUE</span>
+        <span class="c81-eyebrow">GESTÃO DE ESTOQUE</span>
         <h1 class="c81-page-title" style="margin: 0; font-size: 2rem;">Materiais Fornecidos</h1>
       </div>
       <c81-button variant="primary" (click)="abrirFormMaterial()" data-test="novo-material">+ Novo Material</c81-button>

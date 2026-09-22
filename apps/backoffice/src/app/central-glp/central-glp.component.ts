@@ -74,7 +74,7 @@ interface FechamentoGlpApi {
   template: `
     <div style="padding: var(--space-6); display: flex; flex-direction: column; gap: var(--space-6);">
       <header>
-        <span class="c81-eyebrow">// CENTRAL DE GLP</span>
+        <span class="c81-eyebrow">CENTRAL DE GLP</span>
         <h1 style="margin-top: var(--space-1);">{{ titulo() }}</h1>
       </header>
 
@@ -372,21 +372,23 @@ interface FechamentoGlpApi {
             <p style="margin: 0; color: var(--text-secondary);">Nenhuma medição registrada.</p>
           } @else {
             <div style="display: flex; flex-direction: column; gap: var(--space-3);">
-              <div style="display: grid; grid-template-columns: 1.5fr 1.2fr 1fr 1fr 1fr; gap: var(--space-3); align-items: center; padding: 0 var(--space-3) var(--space-2); color: var(--text-secondary); font-size: 0.8rem; text-transform: uppercase; border-bottom: var(--hairline);">
+              <div style="display: grid; grid-template-columns: 1.5fr 1.2fr 1fr 1fr 1fr auto; gap: var(--space-3); align-items: center; padding: 0 var(--space-3) var(--space-2); color: var(--text-secondary); font-size: 0.8rem; text-transform: uppercase; border-bottom: var(--hairline);">
                 <div>Nome do inquilino</div>
                 <div>Data da leitura</div>
                 <div>Leitura inicial</div>
                 <div>Leitura final</div>
                 <div>Consumo kg</div>
+                <div>Ação</div>
               </div>
 
               @for (item of leiturasCentral(); track item.id) {
-                <div style="display: grid; grid-template-columns: 1.5fr 1.2fr 1fr 1fr 1fr; gap: var(--space-3); align-items: center; padding: var(--space-3); border: var(--hairline); border-radius: 8px; background: rgba(255,255,255,0.02);">
+                <div style="display: grid; grid-template-columns: 1.5fr 1.2fr 1fr 1fr 1fr auto; gap: var(--space-3); align-items: center; padding: var(--space-3); border: var(--hairline); border-radius: 8px; background: rgba(255,255,255,0.02);">
                   <div><strong>{{ item.nomeInquilino }}</strong></div>
                   <div>{{ formatarData(item.dataLeitura) }}</div>
                   <div>{{ item.leituraInicial.toFixed(2) }} m³</div>
                   <div>{{ item.leituraFinal.toFixed(2) }} m³</div>
                   <div>{{ item.consumoKg.toFixed(2) }} kg</div>
+                  <button type="button" class="c81-button c81-button--secondary" (click)="excluirLeitura(item.tenantId, item.id)">Excluir</button>
                 </div>
               }
             </div>
@@ -423,6 +425,7 @@ interface FechamentoGlpApi {
                       <div style="display: flex; flex-wrap: wrap; gap: var(--space-2); margin-top: var(--space-2);">
                         <button type="button" class="c81-button c81-button--secondary" (click)="revisarFechamento(fechamento)">Revisar</button>
                         <button type="button" class="c81-button c81-button--primary" (click)="editarFechamento(fechamento)">Editar</button>
+                        <button type="button" class="c81-button c81-button--secondary" (click)="imprimirFechamento(fechamento)">Imprimir</button>
                         <button type="button" class="c81-button c81-button--secondary" (click)="excluirFechamento(fechamento.id)">Excluir</button>
                       </div>
                     </div>
@@ -641,6 +644,7 @@ export class CentralGlpComponent {
   protected readonly gasFiltroTenant = signal<string>('');
   protected readonly gasDataInicio = signal<string>('');
   protected readonly gasDataFim = signal<string>('');
+  private gasDashboardRequestSeq = 0;
   protected readonly perdas = signal<Array<{ id: string; tenantId: string; tipo: string; quantidadeKg: number }>>([]);
   protected readonly leiturasCentral = signal<LeituraCentralGlpItem[]>([]);
   protected readonly fechamentos = signal<FechamentoGlpApi[]>([]);
@@ -957,6 +961,7 @@ export class CentralGlpComponent {
     });
   }
   private carregarGasDashboard(): void {
+    const requestSeq = ++this.gasDashboardRequestSeq;
     const params: Record<string, string> = {};
     if (this.gasFiltroTenant()) {
       params['tenantId'] = this.gasFiltroTenant();
@@ -969,8 +974,18 @@ export class CentralGlpComponent {
     }
 
     this.http.get<GasDashboardItem[]>(`${API_BASE}/backoffice/central-glp/leituras/dashboard`, { params }).subscribe({
-      next: (lista) => this.gasDashboard.set(lista),
-      error: () => this.gasDashboard.set([]),
+      next: (lista) => {
+        if (requestSeq !== this.gasDashboardRequestSeq) {
+          return;
+        }
+        this.gasDashboard.set(lista);
+      },
+      error: () => {
+        if (requestSeq !== this.gasDashboardRequestSeq) {
+          return;
+        }
+        this.gasDashboard.set([]);
+      },
     });
   }
 
@@ -1121,8 +1136,15 @@ export class CentralGlpComponent {
     const confirmado = window.confirm('Deseja excluir esta leitura de gás?');
     if (!confirmado) return;
     this.http.delete(`${API_BASE}/backoffice/central-glp/leituras/${id}`, { params: { tenantId } }).subscribe({
-      next: () => this.carregarGasDashboard(),
-      error: () => this.carregarGasDashboard(),
+      next: () => {
+        this.carregarGasDashboard();
+        this.carregarLeiturasCentral(tenantId);
+        this.carregarDashboard();
+      },
+      error: () => {
+        this.carregarGasDashboard();
+        this.carregarLeiturasCentral(tenantId);
+      },
     });
   }
 
@@ -1314,6 +1336,135 @@ export class CentralGlpComponent {
       },
       error: (error) => {
         this.erro.set(error?.error?.message ?? 'Não foi possível excluir o fechamento.');
+      },
+    });
+  }
+
+  protected imprimirFechamento(fechamento: FechamentoGlpApi): void {
+    const tenantId = fechamento.tenantId || this.formFechamento.inquilinoId || this.tenantId();
+    if (!tenantId || !fechamento?.id) {
+      this.erro.set('Selecione um fechamento com inquilino válido para imprimir.');
+      return;
+    }
+
+    this.http.get<Array<{
+      id: string;
+      tenantId?: string;
+      data: string;
+      leituraAnterior: number | string;
+      leituraAtual: number | string;
+      consumoM3?: number | string;
+      consumoKg?: number | string;
+      unidade?: string;
+      fatorConversao?: number | string;
+      observacao?: string;
+    }>>(`${API_BASE}/backoffice/central-glp/fechamento/${fechamento.id}/leituras`, { params: { tenantId } }).subscribe({
+      next: (leituras) => {
+        const linhas = leituras.length === 0
+          ? '<tr><td colspan="6">Nenhuma leitura vinculada a este fechamento.</td></tr>'
+          : leituras.map((item) => {
+              const leituraInicial = Number(item.leituraAnterior ?? 0);
+              const leituraFinal = Number(item.leituraAtual ?? 0);
+              const consumoM3 = Number(item.consumoM3 ?? (leituraFinal - leituraInicial));
+              const consumoKg = Number(item.consumoKg ?? (consumoM3 * Number(item.fatorConversao ?? 1)));
+              const observacao = item.observacao?.trim() || 'Sem observação';
+              return `
+                <tr>
+                  <td>${this.formatarData(item.data)}</td>
+                  <td>${leituraInicial.toFixed(2)} m³</td>
+                  <td>${leituraFinal.toFixed(2)} m³</td>
+                  <td>${consumoM3.toFixed(2)} m³</td>
+                  <td>${consumoKg.toFixed(2)} kg</td>
+                  <td>${observacao}</td>
+                </tr>`;
+            }).join('');
+
+        const html = `<!doctype html>
+          <html lang="pt-BR">
+            <head>
+              <meta charset="utf-8" />
+              <title>Conferência de fechamento de GLP</title>
+              <style>
+                body { font-family: Arial, sans-serif; margin: 32px; color: #111827; }
+                .topo { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 20px; padding-bottom: 16px; border-bottom: 2px solid #f3f4f6; }
+                .logo-wrap { display: flex; align-items: center; justify-content: center; }
+                .logo-wrap svg { width: 260px; height: auto; display: block; }
+                .titulo { margin: 0; font-size: 1.8rem; }
+                .resumo { display: grid; grid-template-columns: repeat(3, minmax(180px, 1fr)); gap: 12px; margin-bottom: 24px; }
+                .card { background: #f3f4f6; border-radius: 8px; padding: 12px 14px; }
+                .card .label { font-size: 11px; color: #6b7280; letter-spacing: 0.12em; text-transform: uppercase; }
+                .card .value { margin-top: 8px; font-weight: 700; font-size: 1.2rem; }
+                table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+                th, td { padding: 10px 12px; border-bottom: 1px solid #e5e7eb; text-align: left; }
+                th { background: #f9fafb; }
+                .rodape { margin-top: 28px; padding-top: 12px; border-top: 1px solid #e5e7eb; color: #6b7280; font-size: 12px; display: flex; justify-content: flex-end; }
+                @media print { body { margin: 0; } }
+              </style>
+            </head>
+            <body>
+              <div class="topo">
+                <div class="logo-wrap" aria-label="Cozinha81 logo">
+                  <svg viewBox="0 0 300 80" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Cozinha81">
+                    <path fill-rule="evenodd" fill="#1A1A1A" d="M 31 25 A 11 11 0 1 1 9 25 A 11 11 0 1 1 31 25 Z M 25 25 A  5  5 0 1 1 15 25 A  5  5 0 1 1 25 25 Z M 31 55 A 11 11 0 1 1 9 55 A 11 11 0 1 1 31 55 Z M 25 55 A  5  5 0 1 1 15 55 A  5  5 0 1 1 25 55 Z M 59 55 A 11 11 0 1 1 37 55 A 11 11 0 1 1 59 55 Z M 53 55 A  5  5 0 1 1 43 55 A  5  5 0 1 1 53 55 Z"></path>
+                    <circle cx="20" cy="25" r="2.5" fill="#1A1A1A"></circle>
+                    <circle cx="20" cy="55" r="2.5" fill="#1A1A1A"></circle>
+                    <circle cx="48" cy="55" r="2.5" fill="#1A1A1A"></circle>
+                    <path fill-rule="evenodd" fill="#C4520A" d="M 59 25 A 11 11 0 1 1 37 25 A 11 11 0 1 1 59 25 Z M 53 25 A  5  5 0 1 1 43 25 A  5  5 0 1 1 53 25 Z"></path>
+                    <circle cx="48" cy="25" r="2.5" fill="#C4520A"></circle>
+                    <line x1="73" y1="14" x2="73" y2="66" stroke="#E0E0E0" stroke-width="1"></line>
+                    <text x="85" y="43" font-family="'Archivo', 'Arial Black', sans-serif" font-size="22" font-weight="900" letter-spacing="0.5"><tspan fill="#1A1A1A">COZINHA</tspan><tspan fill="#C4520A">81</tspan></text>
+                    <text x="85" y="60" font-family="'Archivo', Arial, sans-serif" font-size="8" font-weight="400" fill="#9B968C" letter-spacing="3.5">COZINHAS PROFISSIONAIS</text>
+                  </svg>
+                </div>
+                <h1 class="titulo">Leituras do fechamento</h1>
+              </div>
+
+              <div class="resumo">
+                <div class="card">
+                  <div class="label">Inquilino</div>
+                  <div class="value">${this.obterNomeInquilino(tenantId)}</div>
+                </div>
+                <div class="card">
+                  <div class="label">Período</div>
+                  <div class="value">${this.formatarMes(fechamento.mes)}</div>
+                </div>
+                <div class="card">
+                  <div class="label">Total</div>
+                  <div class="value">${this.formatarMoeda(fechamento.valorFaturado)}</div>
+                </div>
+              </div>
+
+              <table>
+                <thead>
+                  <tr>
+                    <th>Data</th>
+                    <th>Leitura inicial</th>
+                    <th>Leitura final</th>
+                    <th>Consumo</th>
+                    <th>Kg</th>
+                    <th>Observação</th>
+                  </tr>
+                </thead>
+                <tbody>${linhas}</tbody>
+              </table>
+
+              <div class="rodape">Emitido em: ${new Date().toLocaleString('pt-BR')}</div>
+            </body>
+          </html>`;
+
+        const win = window.open('', '_blank', 'width=900,height=700');
+        if (!win) {
+          this.erro.set('O navegador bloqueou a abertura da janela de impressão.');
+          return;
+        }
+
+        win.document.write(html);
+        win.document.close();
+        win.focus();
+        win.print();
+      },
+      error: (error) => {
+        this.erro.set(error?.error?.message ?? 'Não foi possível carregar as leituras do fechamento para impressão.');
       },
     });
   }

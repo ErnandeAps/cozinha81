@@ -63,7 +63,7 @@ const COZINHAS_BASE: CozinhaCustoBase[] = [];
   imports: [CommonModule, FormsModule, CardComponent, ButtonComponent],
   template: `
     <header style="padding: var(--space-6);">
-      <span class="c81-eyebrow">// ADMINISTRAÇÃO</span>
+      <span class="c81-eyebrow">ADMINISTRAÇÃO</span>
       <h1 style="margin: 0; font-size: 2rem;">Centro de custo</h1>
     </header>
 
@@ -270,7 +270,12 @@ export class CentroCustoComponent implements OnInit {
   }
 
   protected formatarValorInput(valor: number): string {
-    return Number.isFinite(valor) ? Number(valor).toFixed(2) : '0.00';
+    return Number.isFinite(valor)
+      ? new Intl.NumberFormat('pt-BR', {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        }).format(valor)
+      : '0,00';
   }
 
   protected valorEquipamento(equipamento: Partial<EquipamentoCustoItem> | null | undefined): number {
@@ -285,7 +290,20 @@ export class CentroCustoComponent implements OnInit {
       return;
     }
 
-    const normalizado = texto.replace(/\s/g, '').replace(/\./g, '').replace(',', '.');
+    let normalizado = texto.replace(/\s/g, '');
+
+    if (normalizado.includes(',') && normalizado.includes('.')) {
+      normalizado = normalizado.replace(/\./g, '').replace(',', '.');
+    } else if (normalizado.includes(',')) {
+      normalizado = normalizado.replace(',', '.');
+    }
+
+    normalizado = normalizado.replace(/[^\d.]/g, '');
+    const partes = normalizado.split('.');
+    if (partes.length > 2) {
+      normalizado = `${partes.shift()}.${partes.join('')}`;
+    }
+
     const numero = Number(normalizado);
     this.aluguelMensal.set(Number.isFinite(numero) ? numero : 0);
     this.aluguelMensalManual.set(true);
@@ -336,16 +354,10 @@ export class CentroCustoComponent implements OnInit {
   });
 
   protected readonly aluguelSugeridoMensal = computed(() => {
-    const equipamentos = Number(this.equipamentosTotais() || 0);
+    const custoMensal = this.totalMensal();
     const roi = Number(this.roiDesejado() || 0) / 100;
-    const servicos = Number(this.form().servicos || 0);
-    const condominio = Number(this.form().condominio || 0);
-    const seguranca = Number(this.form().seguranca || 0);
-    const manutencao = Number(this.form().manutencao || 0);
-    const outros = Number(this.form().outros || 0);
 
-    const baseEquipamentos = equipamentos * 1.1;
-    return (baseEquipamentos * (1 + roi)) / 12 + servicos + condominio + seguranca + manutencao + outros;
+    return (custoMensal * (1 + roi)) / 12;
   });
 
   protected readonly aluguelMensal = signal(0);
@@ -539,11 +551,21 @@ export class CentroCustoComponent implements OnInit {
 
         const extras = COZINHAS_BASE.filter((cozinha) => !listaApi.some((item) => item.id === cozinha.id || item.nome.toLowerCase() === cozinha.nome.toLowerCase()));
         const combinadas = [...listaApi, ...extras];
-        this.cozinhas.set(combinadas);
+        const deduplicadas = new Map<string, CozinhaCustoBase>();
+
+        for (const cozinha of combinadas) {
+          const chave = cozinha.id || cozinha.nome.trim().toLowerCase();
+          if (!deduplicadas.has(chave)) {
+            deduplicadas.set(chave, cozinha);
+          }
+        }
+
+        const listaFinal = [...deduplicadas.values()];
+        this.cozinhas.set(listaFinal);
 
         const idAtual = this.cozinhaSelecionada();
-        if (!combinadas.some((item) => item.id === idAtual)) {
-          this.cozinhaSelecionada.set(combinadas[0]?.id ?? '');
+        if (!listaFinal.some((item) => item.id === idAtual)) {
+          this.cozinhaSelecionada.set(listaFinal[0]?.id ?? '');
         }
 
         this.selecionarCozinha(this.cozinhaSelecionada());
@@ -584,7 +606,7 @@ export class CentroCustoComponent implements OnInit {
 
     const persistido = this.obterPersistenciaPorCozinha(idSelecionado);
     if (persistido) {
-      this.aplicarPersistencia(persistido as Partial<CentroCustoPersistido> & Record<string, unknown>, cozinha);
+      this.aplicarPersistencia(persistido as Partial<CentroCustoPersistido> & Record<string, unknown>, cozinha, false);
       return;
     }
 
@@ -651,6 +673,13 @@ export class CentroCustoComponent implements OnInit {
 
   protected salvar(): void {
     const id = this.cozinhaSelecionada();
+    const aluguelMensal = this.aluguelMensalManual() && Number(this.aluguelMensal() ?? 0) > 0
+      ? Number(this.aluguelMensal())
+      : Number(this.aluguelSugeridoMensal() ?? 0);
+
+    this.aluguelMensal.set(aluguelMensal);
+    this.aluguelMensalManual.set(false);
+
     const payload = {
       cozinhaId: id,
       nomeCozinha: this.nomeCozinha(),
@@ -659,7 +688,7 @@ export class CentroCustoComponent implements OnInit {
       custosFixosMensais: this.custosFixosMensais(),
       roiDesejado: this.roiDesejado(),
       reservaManutencao: this.reservaManutencao(),
-      aluguelMensal: this.aluguelMensal(),
+      aluguelMensal,
       margem: this.margem(),
       taxaAdministracao: this.taxaAdministracao(),
       areaM2: Number(this.form().areaM2 ?? 0),
@@ -733,15 +762,28 @@ export class CentroCustoComponent implements OnInit {
     }
   }
 
-  private aplicarPersistencia(dados: Partial<CentroCustoPersistido> & Record<string, unknown>, cozinha?: CozinhaCustoBase | null): void {
+  private aplicarPersistencia(
+    dados: Partial<CentroCustoPersistido> & Record<string, unknown>,
+    cozinha?: CozinhaCustoBase | null,
+    converteCentavos = false,
+  ): void {
+    const paraReais = (valor: unknown): number => {
+      const numero = Number(valor ?? 0);
+      if (!Number.isFinite(numero)) {
+        return 0;
+      }
+
+      return converteCentavos ? numero / 100 : numero;
+    };
+
     const formBase = (dados['form'] ?? { ...dados }) as Record<string, unknown>;
     const areaM2 = Number(formBase['areaM2'] ?? formBase['area_m2'] ?? cozinha?.areaM2 ?? 0);
-    const equipamentos = Number(formBase['equipamentos'] ?? formBase['equipamentos'] ?? cozinha?.equipamentos ?? 0);
-    const servicos = Number(formBase['servicos'] ?? formBase['servicos'] ?? cozinha?.servicos ?? 0);
-    const condominio = Number(formBase['condominio'] ?? formBase['condominio'] ?? cozinha?.condominio ?? 0);
-    const seguranca = Number(formBase['seguranca'] ?? formBase['seguranca'] ?? cozinha?.seguranca ?? 0);
-    const manutencao = Number(formBase['manutencao'] ?? formBase['manutencao'] ?? cozinha?.manutencao ?? 0);
-    const outros = Number(formBase['outros'] ?? formBase['outros'] ?? cozinha?.outros ?? 0);
+    const equipamentos = paraReais(formBase['equipamentos'] ?? formBase['equipamentos'] ?? cozinha?.equipamentos ?? 0);
+    const servicos = paraReais(formBase['servicos'] ?? formBase['servicos'] ?? cozinha?.servicos ?? 0);
+    const condominio = paraReais(formBase['condominio'] ?? formBase['condominio'] ?? cozinha?.condominio ?? 0);
+    const seguranca = paraReais(formBase['seguranca'] ?? formBase['seguranca'] ?? cozinha?.seguranca ?? 0);
+    const manutencao = paraReais(formBase['manutencao'] ?? formBase['manutencao'] ?? cozinha?.manutencao ?? 0);
+    const outros = paraReais(formBase['outros'] ?? formBase['outros'] ?? cozinha?.outros ?? 0);
 
     const equipamentoDetalhesRaw = Array.isArray(formBase['equipamentosDetalhes'])
       ? formBase['equipamentosDetalhes']
@@ -757,17 +799,17 @@ export class CentroCustoComponent implements OnInit {
         id: String(itemRecord['id'] ?? `eq-${index + 1}`),
         nome,
         descricao,
-        valor: Number(itemRecord['valor'] ?? 0),
+        valor: paraReais(itemRecord['valor'] ?? 0),
       } as EquipamentoCustoItem;
     });
 
-    const investimentoInicial = Number(dados['investimentoInicial'] ?? dados['investimento_inicial'] ?? 0);
+    const investimentoInicial = paraReais(dados['investimentoInicial'] ?? dados['investimento_inicial'] ?? 0);
     const prazoContratoMeses = Number(dados['prazoContratoMeses'] ?? dados['prazo_contrato_meses'] ?? 12);
     const roiDesejado = Number(dados['roiDesejado'] ?? dados['roi_desejado'] ?? dados['margem'] ?? 30);
-    const reservaManutencao = Number(dados['reservaManutencao'] ?? dados['reserva_manutencao'] ?? 0);
-    const aluguelMensal = Number(dados['aluguelMensal'] ?? dados['aluguel_mensal'] ?? 0);
-    const custosFixosMensais = Number(dados['custosFixosMensais'] ?? dados['custos_fixos_mensais'] ?? servicos + condominio + seguranca + manutencao + outros);
-    const taxaAdministracao = Number(dados['taxaAdministracao'] ?? dados['taxa_administracao'] ?? 0);
+    const reservaManutencao = paraReais(dados['reservaManutencao'] ?? dados['reserva_manutencao'] ?? 0);
+    const aluguelMensal = paraReais(dados['aluguelMensal'] ?? dados['aluguel_mensal'] ?? 0);
+    const custosFixosMensais = paraReais(dados['custosFixosMensais'] ?? dados['custos_fixos_mensais'] ?? servicos + condominio + seguranca + manutencao + outros);
+    const taxaAdministracao = paraReais(dados['taxaAdministracao'] ?? dados['taxa_administracao'] ?? 0);
 
     this.investimentoInicial.set(investimentoInicial);
     this.prazoContratoMeses.set(prazoContratoMeses);
@@ -795,7 +837,7 @@ export class CentroCustoComponent implements OnInit {
     }
 
     this.http.get<Record<string, unknown>>(`${API_BASE}/backoffice/centro-custo/cozinha/${cozinhaId}`).subscribe({
-      next: (dados) => this.aplicarPersistencia(dados, cozinha),
+      next: (dados) => this.aplicarPersistencia(dados, cozinha, false),
       error: () => {
         if (!cozinha) {
           return;

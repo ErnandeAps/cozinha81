@@ -27,7 +27,7 @@ export class App {
       id: 'visao-geral',
       label: 'Visão Geral',
       aberto: true,
-      itens: [{ label: 'Painel', route: '/inicio' }],
+      itens: [{ label: 'Dashboard', route: '/inicio' }],
     },
     {
       id: 'operacao',
@@ -56,13 +56,19 @@ export class App {
       id: 'comercial',
       label: 'Comercial',
       aberto: true,
-      itens: [{ label: 'Inquilinos', route: '/inquilinos' }],
+      itens: [
+        { label: 'Inquilinos', route: '/inquilinos' },
+        { label: 'Gestor de contratos', route: '/gestor-contratos' },
+      ],
     },
     {
       id: 'financeiro',
       label: 'Financeiro',
       aberto: true,
-      itens: [{ label: 'Faturamento', route: '/billing' }],
+      itens: [
+        { label: 'Fluxo de caixa', route: '/fluxo-caixa' },
+        { label: 'Faturamento', route: '/billing' },
+      ],
     },
     {
       id: 'infraestrutura',
@@ -79,9 +85,7 @@ export class App {
       aberto: true,
       itens: [
         { label: 'Usuários', route: '/usuarios' },
-        { label: 'Acessos', route: '/acessos' },
         { label: 'Centro de custo', route: '/centro-custo' },
-        { label: 'Documentos', route: '/documentos' },
         { label: 'Comunicação', route: '/comunicacao' },
       ],
     },

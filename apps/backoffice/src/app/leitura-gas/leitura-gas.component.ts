@@ -31,7 +31,7 @@ interface LeituraGas {
   imports: [CommonModule, FormsModule, CardComponent, ButtonComponent],
   template: `
     <header style="padding: var(--space-6);">
-      <span class="c81-eyebrow">// OPERAÇÃO</span>
+      <span class="c81-eyebrow">OPERAÇÃO</span>
       <h1 style="margin: 0; font-size: 2rem;">{{ tituloPagina() }}</h1>
     </header>
 

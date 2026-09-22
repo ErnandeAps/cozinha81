@@ -37,7 +37,7 @@ interface Fatura {
   imports: [CommonModule, FormsModule, CardComponent, ButtonComponent],
   template: `
     <header class="c81-page-header" style="padding: var(--space-6);">
-      <span class="c81-eyebrow">// FATURAMENTO</span>
+      <span class="c81-eyebrow">FATURAMENTO</span>
       <h1 class="c81-page-title" style="margin: 0; font-size: 2rem;">Cobranças e Faturas</h1>
     </header>
 
@@ -88,7 +88,12 @@ interface Fatura {
 
         <!-- Lista de Faturas -->
         <c81-card [pad]="true">
-          <h2 style="margin-bottom: var(--space-4);">Faturas Emitidas</h2>
+          <div style="display: flex; justify-content: space-between; align-items: center; gap: var(--space-3); margin-bottom: var(--space-4);">
+            <h2 style="margin: 0;">Faturas Emitidas</h2>
+            <c81-button type="button" variant="secondary" size="sm" (click)="gerarRelatorioImpressao()" data-test="btn-relatorio">
+              Gerar relatório para impressão
+            </c81-button>
+          </div>
 
           <!-- Status Filter -->
           <div style="margin-bottom: var(--space-4); display: flex; gap: var(--space-2); align-items: center;">
@@ -159,6 +164,9 @@ interface Fatura {
                           </c81-button>
                           <c81-button variant="ghost" size="sm" (click)="cancelar(f.id)" data-test="btn-cancelar">
                             Cancelar
+                          </c81-button>
+                          <c81-button variant="ghost" size="sm" (click)="excluir(f.id)" data-test="btn-excluir">
+                            Excluir
                           </c81-button>
                         </div>
                       }
@@ -297,6 +305,148 @@ export class BillingComponent implements OnInit {
       },
       error: (e) => this.erro.set(e?.error?.message ?? 'Falha ao cancelar fatura.'),
     });
+  }
+
+  protected excluir(faturaId: string): void {
+    this.http.delete<Fatura>(`${API_BASE}/backoffice/billing/${faturaId}`).subscribe({
+      next: () => {
+        this.sucesso.set('Fatura excluída.');
+        this.carregarDados();
+        this.faturaExpandida.set(null);
+        this.faturaDetalhe.set(null);
+      },
+      error: (e) => this.erro.set(e?.error?.message ?? 'Falha ao excluir fatura.'),
+    });
+  }
+
+  protected async gerarRelatorioImpressao(): Promise<void> {
+    const relatorio = this.faturasFiltradas();
+
+    if (relatorio.length === 0) {
+      this.erro.set('Não há faturas para gerar o relatório de impressão.');
+      return;
+    }
+
+    const relatorioDetalhado = await Promise.all(
+      relatorio.map(async (fatura) => {
+        try {
+          const detalhe = await this.http.get<Fatura>(`${API_BASE}/backoffice/billing/${fatura.id}`).toPromise();
+          return detalhe ?? fatura;
+        } catch {
+          return fatura;
+        }
+      }),
+    );
+
+    const total = relatorioDetalhado.reduce((soma, fatura) => soma + Number(fatura.valor_total || 0), 0);
+    const linhas = relatorioDetalhado
+      .map((fatura) => {
+        const itens = (fatura.itens ?? [])
+          .map(
+            (item) => `
+              <tr>
+                <td>${item.tipo}</td>
+                <td>${item.descricao}</td>
+                <td>${this.formatarReais(item.valor)}</td>
+              </tr>`,
+          )
+          .join('');
+
+        return `
+          <section class="fatura">
+            <div class="cabecalho">
+              <div>
+                <strong>${this.obterTenantNome(fatura.tenant_id)}</strong>
+                <div class="codigo">Fatura #${fatura.id.slice(0, 8)}</div>
+              </div>
+              <span class="status">${fatura.status.toUpperCase()}</span>
+            </div>
+            <div class="periodo">${this.formatarData(fatura.periodo_inicio)} → ${this.formatarData(fatura.periodo_fim)}</div>
+            <div class="valor">${this.formatarReais(fatura.valor_total)}</div>
+            <table>
+              <thead>
+                <tr>
+                  <th>Tipo</th>
+                  <th>Descrição</th>
+                  <th>Valor</th>
+                </tr>
+              </thead>
+              <tbody>${itens || '<tr><td colspan="3">Sem itens detalhados.</td></tr>'}</tbody>
+            </table>
+          </section>`;
+      })
+      .join('');
+
+    const win = window.open('', '_blank', 'width=900,height=700');
+    if (!win) {
+      this.erro.set('O navegador bloqueou a abertura da janela de impressão.');
+      return;
+    }
+
+    const html = `
+      <!doctype html>
+      <html lang="pt-BR">
+        <head>
+          <meta charset="utf-8" />
+          <title>Relatório de faturamento</title>
+          <style>
+            body { font-family: Arial, sans-serif; margin: 32px; color: #111827; }
+            .topo-relatorio { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 20px; padding-bottom: 14px; border-bottom: 2px solid #f3f4f6; }
+            .marca { display: flex; align-items: center; gap: 12px; }
+            .logo-wrap { display: flex; align-items: center; justify-content: center; }
+            .logo-wrap svg { width: 300px; height: auto; display: block; }
+            .marca-subtexto { font-size: 11px; color: #6b7280; letter-spacing: 0.14em; text-transform: uppercase; }
+            h1 { margin: 0; font-size: 1.8rem; }
+            .resumo { display: flex; justify-content: space-between; padding: 12px 16px; background: #f3f4f6; border-radius: 8px; margin-bottom: 24px; }
+            .codigo { font-size: 11px; color: #6b7280; margin-top: 2px; }
+            .fatura { border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px; margin-bottom: 20px; }
+            .cabecalho { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; }
+            .status { font-size: 12px; font-weight: 700; padding: 4px 8px; background: #eef2ff; border-radius: 999px; }
+            .periodo { color: #6b7280; font-size: 12px; margin-bottom: 8px; }
+            .valor { font-size: 24px; font-weight: 700; margin-bottom: 12px; }
+            table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+            th, td { padding: 8px 10px; border-bottom: 1px solid #e5e7eb; text-align: left; }
+            th { background: #f9fafb; }
+            .rodape { margin-top: 28px; padding-top: 12px; border-top: 1px solid #e5e7eb; color: #6b7280; font-size: 12px; display: flex; justify-content: flex-end; }
+            @media print { body { margin: 0; } .no-print { display: none; } }
+          </style>
+        </head>
+        <body>
+          <div class="topo-relatorio">
+            <div class="marca">
+              <div class="logo-wrap" aria-label="Cozinha81 logo">
+                <svg viewBox="0 0 300 80" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Cozinha81">
+                  <path fill-rule="evenodd" fill="#1A1A1A" d="M 31 25 A 11 11 0 1 1 9 25 A 11 11 0 1 1 31 25 Z M 25 25 A  5  5 0 1 1 15 25 A  5  5 0 1 1 25 25 Z M 31 55 A 11 11 0 1 1 9 55 A 11 11 0 1 1 31 55 Z M 25 55 A  5  5 0 1 1 15 55 A  5  5 0 1 1 25 55 Z M 59 55 A 11 11 0 1 1 37 55 A 11 11 0 1 1 59 55 Z M 53 55 A  5  5 0 1 1 43 55 A  5  5 0 1 1 53 55 Z"></path>
+                  <circle cx="20" cy="25" r="2.5" fill="#1A1A1A"></circle>
+                  <circle cx="20" cy="55" r="2.5" fill="#1A1A1A"></circle>
+                  <circle cx="48" cy="55" r="2.5" fill="#1A1A1A"></circle>
+                  <path fill-rule="evenodd" fill="#C4520A" d="M 59 25 A 11 11 0 1 1 37 25 A 11 11 0 1 1 59 25 Z M 53 25 A  5  5 0 1 1 43 25 A  5  5 0 1 1 53 25 Z"></path>
+                  <circle cx="48" cy="25" r="2.5" fill="#C4520A"></circle>
+                  <line x1="73" y1="14" x2="73" y2="66" stroke="#E0E0E0" stroke-width="1"></line>
+                  <text x="85" y="43" font-family="'Archivo','Arial Black',sans-serif" font-size="22" font-weight="900" letter-spacing="0.5"><tspan fill="#1A1A1A">COZINHA</tspan><tspan fill="#C4520A">81</tspan></text>
+                  <text x="85" y="60" font-family="'Archivo',Arial,sans-serif" font-size="8" font-weight="400" fill="#9B968C" letter-spacing="3.5">COZINHAS PROFISSIONAIS</text>
+                </svg>
+              </div>
+            </div>
+            <h1>Relatório de faturamento</h1>
+          </div>
+          <div class="resumo">
+            <span>Faturas no relatório</span>
+            <strong>${relatorioDetalhado.length}</strong>
+          </div>
+          <div class="resumo">
+            <span>Total consolidado</span>
+            <strong>${this.formatarReais(total)}</strong>
+          </div>
+          ${linhas}
+          <div class="rodape">Emitido em: ${new Date().toLocaleString('pt-BR')}</div>
+        </body>
+      </html>`;
+
+    win.document.write(html);
+    win.document.close();
+    win.focus();
+    win.print();
   }
 
   protected obterTenantNome(tenantId: string): string {

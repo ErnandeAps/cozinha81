@@ -5,10 +5,16 @@ CREATE TABLE IF NOT EXISTS presenca (
   id         uuid        PRIMARY KEY DEFAULT uuidv7(),
   cozinha_id uuid        NOT NULL REFERENCES cozinha (id) ON DELETE CASCADE,
   tenant_id  uuid        REFERENCES inquilino (id) ON DELETE SET NULL,
+  data       date        NOT NULL DEFAULT current_date,
   tipo       text        NOT NULL CHECK (tipo IN ('in', 'out')),
   checklist  jsonb,      -- Estrutura: { limpeza: boolean, equipamento: boolean, observacoes: text }
   criado_em  timestamptz NOT NULL DEFAULT now()
 );
+
+ALTER TABLE presenca ADD COLUMN IF NOT EXISTS data date;
+UPDATE presenca SET data = criado_em::date WHERE data IS NULL;
+ALTER TABLE presenca ALTER COLUMN data SET NOT NULL;
+ALTER TABLE presenca ALTER COLUMN data SET DEFAULT current_date;
 
 ALTER TABLE presenca ENABLE ROW LEVEL SECURITY;
 ALTER TABLE presenca FORCE ROW LEVEL SECURITY;
